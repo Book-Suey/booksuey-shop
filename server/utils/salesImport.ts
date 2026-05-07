@@ -104,7 +104,6 @@ function parseDateTime(date: string, time: string): Date | null {
   ) {
     return null
   }
-
   return soldAt
 }
 
