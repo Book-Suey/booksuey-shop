@@ -1,76 +1,120 @@
 <script setup>
+const auth = useVendorAuth()
+const isLoggingOut = ref(false)
+
+onMounted(async () => {
+  await auth.ensureInitialized()
+})
+
+const isAuthenticated = computed(() => !!auth.token.value)
+
+async function handleLogout() {
+  isLoggingOut.value = true
+  await auth.logout()
+  isLoggingOut.value = false
+  await navigateTo('/login')
+}
+
 useHead({
-  meta: [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1' }
-  ],
-  link: [
-    { rel: 'icon', href: '/favicon.ico' }
-  ],
+  meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+  link: [{ rel: 'icon', href: '/favicon.ico' }],
   htmlAttrs: {
     lang: 'en'
   }
 })
 
-const title = 'Nuxt Starter Template'
-const description = 'A production-ready starter template powered by Nuxt UI. Build beautiful, accessible, and performant applications in minutes, not hours.'
+const title = 'Book Suey Vendor Portal'
+const description
+  = 'A vendor self-service portal for Book Suey consignors to review sales, track balances, and request payouts.'
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
-  ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/starter-light.png',
   twitterCard: 'summary_large_image'
 })
 </script>
 
 <template>
-  <UApp>
-    <UHeader>
+  <UApp class="app-shell">
+    <UHeader
+      :toggle="false"
+      class="app-header"
+    >
       <template #left>
-        <NuxtLink to="/">
-          <AppLogo class="w-auto h-6 shrink-0" />
+        <NuxtLink
+          to="/"
+          class="app-brand"
+        >
+          <span class="app-brand__mark">BS</span>
+          <span class="app-brand__text">
+            <span class="app-brand__name">Book Suey</span>
+            <span class="app-brand__meta">Vendor Portal</span>
+          </span>
         </NuxtLink>
-
-        <TemplateMenu />
       </template>
 
       <template #right>
-        <UColorModeButton />
+        <nav class="app-nav">
+          <template v-if="isAuthenticated">
+            <NuxtLink
+              to="/#overview"
+              class="app-nav__link"
+            >Overview</NuxtLink>
+            <NuxtLink
+              to="/#sales"
+              class="app-nav__link"
+            >Sales</NuxtLink>
+            <NuxtLink
+              to="/#ledger"
+              class="app-nav__link"
+            >Ledger</NuxtLink>
+            <NuxtLink
+              to="/#payouts"
+              class="app-nav__link"
+            >Payouts</NuxtLink>
+            <button
+              type="button"
+              class="app-nav__link app-nav__button"
+              :disabled="isLoggingOut"
+              @click="handleLogout"
+            >
+              {{ isLoggingOut ? "Signing out..." : "Logout" }}
+            </button>
+          </template>
 
-        <UButton
-          to="https://github.com/nuxt-ui-templates/starter"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
-        />
+          <template v-else>
+            <NuxtLink
+              to="/login"
+              class="app-nav__link"
+            >Login</NuxtLink>
+            <NuxtLink
+              to="/register"
+              class="app-nav__link"
+            >Register</NuxtLink>
+          </template>
+        </nav>
       </template>
     </UHeader>
 
-    <UMain>
+    <UMain class="app-main">
       <NuxtPage />
     </UMain>
 
-    <USeparator icon="i-simple-icons-nuxtdotjs" />
+    <USeparator class="app-separator" />
 
-    <UFooter>
+    <UFooter class="app-footer">
       <template #left>
-        <p class="text-sm text-muted">
-          Built with Nuxt UI • © {{ new Date().getFullYear() }}
+        <p class="app-footer__copy">
+          Book Suey Vendor Portal • © {{ new Date().getFullYear() }}
         </p>
       </template>
 
       <template #right>
-        <UButton
-          to="https://github.com/nuxt-ui-templates/starter"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
-        />
+        <p class="app-footer__copy app-footer__copy--muted">
+          Quarterly sales, balances, and payout history in one place.
+        </p>
       </template>
     </UFooter>
   </UApp>
