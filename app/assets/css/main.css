@@ -82,18 +82,11 @@ body {
 }
 
 .app-brand__mark {
-  display: inline-flex;
+  display: block;
   height: 2.8rem;
   width: 2.8rem;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--portal-line);
-  background-color: var(--portal-night);
-  color: var(--portal-paper);
-  font-family: var(--font-mono);
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 .app-brand__text {
