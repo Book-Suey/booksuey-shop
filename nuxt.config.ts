@@ -11,11 +11,17 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  routeRules: {
-    '/': { prerender: true }
+  runtimeConfig: {
+    mongodbUri: process.env.MONGODB_URI,
+    jwtSecret: process.env.JWT_SECRET,
+    bcryptCostFactor: parseInt(process.env.BCRYPT_COST_FACTOR || '12', 10)
   },
 
   compatibilityDate: '2025-01-15',
+
+  nitro: {
+    preset: 'node-server'
+  },
 
   eslint: {
     config: {
