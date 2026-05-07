@@ -6,7 +6,6 @@ definePageMeta({
 const auth = useVendorAuth()
 const isSubmitting = ref(false)
 const formError = ref<string | null>(null)
-const successMessage = ref<string | null>(null)
 
 const form = reactive({
   legalName: '',
@@ -18,11 +17,10 @@ const form = reactive({
 
 async function submitRegistration(): Promise<void> {
   formError.value = null
-  successMessage.value = null
   isSubmitting.value = true
 
   try {
-    const response = await auth.register({
+    await auth.register({
       legalName: form.legalName,
       displayName: form.displayName,
       email: form.email,
@@ -30,13 +28,7 @@ async function submitRegistration(): Promise<void> {
       password: form.password
     })
 
-    successMessage.value = `${response.message} You can sign in now.`
-
-    form.legalName = ''
-    form.displayName = ''
-    form.email = ''
-    form.phone = ''
-    form.password = ''
+    await navigateTo('/auth-success?event=registered')
   } catch (error: unknown) {
     const statusMessage = (error as { statusMessage?: string })?.statusMessage
     formError.value = statusMessage || 'Unable to create account right now.'
@@ -118,13 +110,6 @@ async function submitRegistration(): Promise<void> {
           class="auth-error"
         >
           {{ formError }}
-        </p>
-
-        <p
-          v-if="successMessage"
-          class="auth-success"
-        >
-          {{ successMessage }}
         </p>
 
         <button

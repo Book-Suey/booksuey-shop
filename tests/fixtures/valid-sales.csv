@@ -1,0 +1,5 @@
+source,period,date,amount,description
+restaurant-a,2026-05,2026-05-01,150.00,Daily sales
+restaurant-a,2026-05,2026-05-02,175.50,Daily sales
+restaurant-b,2026-05,2026-05-01,220.00,Daily sales
+unknown-source,2026-05,2026-05-03,100.00,Unmapped source
