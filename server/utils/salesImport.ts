@@ -72,18 +72,25 @@ function parseDateTime(date: string, time: string): Date | null {
     return null
   }
 
-  const month = Number.parseInt(dateMatch[1], 10)
-  const day = Number.parseInt(dateMatch[2], 10)
-  const year = Number.parseInt(dateMatch[3], 10)
-  const hour12 = Number.parseInt(timeMatch[1], 10)
-  const minute = Number.parseInt(timeMatch[2], 10)
-  const meridiem = timeMatch[3].toUpperCase()
+  const [, monthPart, dayPart, yearPart] = dateMatch
+  const [, hourPart, minutePart, meridiemPart] = timeMatch
+
+  if (!monthPart || !dayPart || !yearPart || !hourPart || !minutePart || !meridiemPart) {
+    return null
+  }
+
+  const month = Number.parseInt(monthPart, 10)
+  const day = Number.parseInt(dayPart, 10)
+  const year = Number.parseInt(yearPart, 10)
+  const hour12 = Number.parseInt(hourPart, 10)
+  const minute = Number.parseInt(minutePart, 10)
+  const meridiem = meridiemPart.toUpperCase()
 
   if (
-    month < 1 || month > 12 ||
-    day < 1 || day > 31 ||
-    hour12 < 1 || hour12 > 12 ||
-    minute < 0 || minute > 59
+    month < 1 || month > 12
+    || day < 1 || day > 31
+    || hour12 < 1 || hour12 > 12
+    || minute < 0 || minute > 59
   ) {
     return null
   }
@@ -95,12 +102,12 @@ function parseDateTime(date: string, time: string): Date | null {
 
   const soldAt = new Date(year, month - 1, day, hour24, minute, 0, 0)
   if (
-    Number.isNaN(soldAt.getTime()) ||
-    soldAt.getFullYear() !== year ||
-    soldAt.getMonth() !== month - 1 ||
-    soldAt.getDate() !== day ||
-    soldAt.getHours() !== hour24 ||
-    soldAt.getMinutes() !== minute
+    Number.isNaN(soldAt.getTime())
+    || soldAt.getFullYear() !== year
+    || soldAt.getMonth() !== month - 1
+    || soldAt.getDate() !== day
+    || soldAt.getHours() !== hour24
+    || soldAt.getMinutes() !== minute
   ) {
     return null
   }

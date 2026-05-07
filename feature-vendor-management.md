@@ -100,3 +100,45 @@ The Vendor Management Features provide comprehensive tools for administrators to
    - Integration test for vendor creation with external ID
    - Integration test for vendor lookup by external ID
    - Integration test for identifier mapping during sales import
+
+## Status Overview (as of 2026-05-07)
+
+### Overall Status
+
+- Vendor management API coverage is mostly complete for MVP admin operations.
+- ApprovedVendor and Vendor CRUD-style admin endpoints are implemented and integration tested.
+- Audit coverage is in place for create/update/delete operations, with some lifecycle controls still pending.
+
+### Completed
+
+- ApprovedVendor endpoints:
+  - GET /api/admin/approved-vendors
+  - POST /api/admin/approved-vendors
+  - PATCH /api/admin/approved-vendors/:approvedVendorId
+  - DELETE /api/admin/approved-vendors/:approvedVendorId
+- Vendor admin endpoints:
+  - GET /api/admin/vendors
+  - GET /api/admin/vendors/:vendorId (supports lookup by vendorId or approvedVendorId)
+  - POST /api/admin/vendors
+  - PATCH /api/admin/vendors/:vendorId
+- Unique email enforcement for Vendor and ApprovedVendor create/update paths.
+- Vendor status activation/deactivation support via PATCH endpoint.
+- Audit event creation for approved-vendor and vendor create/update/delete actions.
+- approvedVendorId cascade update when ApprovedVendor basilId is changed.
+- Integration tests covering duplicate constraints, updates, status changes, listing/filtering, and external-ID lookup behavior.
+
+### Partially Complete
+
+- Vendor lockout data exists and is enforced by auth flows, but no explicit admin unlock operation is exposed yet.
+- Requirement for editing agreement metadata is not explicitly modeled as a dedicated agreement resource yet.
+
+### Pending
+
+- Explicit admin unlock endpoint/control for locked vendor accounts.
+- Consignment agreement metadata model and dedicated CRUD endpoints if this remains an MVP requirement.
+- Additional route-level tests for delete flows and edge-case authorization coverage.
+
+### Verification Status
+
+- Integration coverage for vendor management endpoints exists in tests/integration/vendor-management.test.ts.
+- A fresh full-project verification run should be used as the release gate after ongoing feature work is finalized.

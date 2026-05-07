@@ -3,6 +3,8 @@ import { LedgerEntry } from '../models/LedgerEntry'
 import { BalanceSnapshot } from '../models/BalanceSnapshot'
 import type { ILedgerEntry } from '../models/LedgerEntry'
 
+export type BalanceEntryType = 'sale' | 'reservation' | 'release' | 'paid'
+
 type RunningBalance = {
   pendingAmount: Decimal
   availableAmount: Decimal
@@ -18,24 +20,41 @@ function createZeroBalance(): RunningBalance {
 }
 
 export function applyLedgerEntryToBalance(balance: RunningBalance, entry: {
-  entryType: 'sale' | 'reservation' | 'release' | 'paid'
+  entryType: BalanceEntryType
   amount: string
 }): RunningBalance {
   const amount = new Decimal(entry.amount)
 
-  if (entry.entryType === 'sale' || entry.entryType === 'release') {
+  if (entry.entryType === 'sale') {
     balance.availableAmount = balance.availableAmount.plus(amount)
   }
 
-  if (entry.entryType === 'reservation' || entry.entryType === 'paid') {
+  if (entry.entryType === 'reservation') {
     balance.availableAmount = balance.availableAmount.minus(amount)
+    balance.pendingAmount = balance.pendingAmount.plus(amount)
+  }
+
+  if (entry.entryType === 'release') {
+    balance.availableAmount = balance.availableAmount.plus(amount)
+    balance.pendingAmount = balance.pendingAmount.minus(amount)
   }
 
   if (entry.entryType === 'paid') {
+    balance.pendingAmount = balance.pendingAmount.minus(amount)
     balance.paidAmount = balance.paidAmount.plus(amount)
   }
 
   return balance
+}
+
+export function getLedgerEntryBalanceImpact(entryType: BalanceEntryType, amount: string): string {
+  const decimalAmount = new Decimal(amount)
+
+  if (entryType === 'sale' || entryType === 'release') {
+    return decimalAmount.toFixed(2)
+  }
+
+  return decimalAmount.negated().toFixed(2)
 }
 
 export async function recomputeBalanceSnapshot(vendorId: string): Promise<{

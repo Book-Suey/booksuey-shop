@@ -1,5 +1,10 @@
 import { getAuthRateLimitConfig } from '../config/auth'
 
+export interface RateLimitConfig {
+  max: number
+  windowMs: number
+}
+
 interface RateLimitEntry {
   count: number
   resetTime: number
@@ -14,8 +19,7 @@ export interface RateLimitResult {
   resetTime: number
 }
 
-export function checkRateLimit(identifier: string): RateLimitResult {
-  const config = getAuthRateLimitConfig()
+export function checkRateLimit(identifier: string, config: RateLimitConfig = getAuthRateLimitConfig()): RateLimitResult {
   const now = Date.now()
   const key = `ratelimit:${identifier}`
   const entry = rateLimitStore.get(key)
@@ -52,4 +56,8 @@ export function checkRateLimit(identifier: string): RateLimitResult {
 
 export function getRateLimitKey(email: string, ip: string): string {
   return `${email}:${ip}`
+}
+
+export function resetRateLimitStore(): void {
+  rateLimitStore.clear()
 }

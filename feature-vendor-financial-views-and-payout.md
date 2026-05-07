@@ -157,17 +157,37 @@ The Vendor Financial Views and Payout Features provide vendors with transparent 
 
 ### Overall Status
 
-- Planned and not yet implemented end-to-end.
-- Endpoint contracts and validation behavior are documented.
+- Vendor financial API surface is mostly implemented and integration tested.
+- Sales, ledger, balance, and payout-request vendor endpoints are available with vendor scoping and validation.
+- Remaining gaps are primarily admin-side payout progression/disbursement and transaction-level hardening.
+
+### Completed
+
+- GET /api/vendor/sales implemented with vendor scoping and optional sourcePeriod/date filters.
+- GET /api/vendor/ledger implemented with chronological entries and SaleRecord reference enrichment.
+- GET /api/vendor/balance implemented with ledger-derived pending/available/paid totals.
+- GET /api/vendor/payout-requests implemented with descending history and status/timestamp fields.
+- POST /api/vendor/payout-requests implemented with:
+  - Positive amount validation.
+  - Available balance check.
+  - 10 requests/hour per-vendor rate limiting.
+  - PayoutRequest creation in requested state.
+  - Reservation ledger entry creation and balance recomputation.
+- PayoutRequest model and payout utility/status-transition helpers implemented.
+- Integration tests implemented for vendor-scoped reads, filter behavior, payout creation, validation failures, and rate limits.
+
+### Partially Complete
+
+- Payout request creation and reservation writes are not wrapped in an explicit transaction.
+- Full payout state progression (approved/rejected/disbursing/paid/failed) depends on admin payout/disbursement flows that are not fully implemented yet.
 
 ### Pending
 
-- Vendor sales, ledger, and balance endpoints.
-- Vendor payout-request list and create endpoints.
-- Balance derivation wiring to ledger entries.
-- Payout history rendering and status timestamp coverage.
-- Integration tests for payout validations and vendor scoping.
+- Admin-driven payout review/disbursement endpoints to drive status transitions beyond requested.
+- Failure/recovery paths that release or settle reserved funds through disbursement outcomes.
+- Optional UI completion for vendor-facing financial views if API-complete status should also include portal screens.
 
 ### Verification Status
 
-- Implementation verification pending until endpoints and data models are added.
+- Integration coverage for vendor financial endpoints exists in tests/integration/vendor-financial.test.ts.
+- A fresh full-project verification run should be used as the release gate after ongoing feature work is finalized.

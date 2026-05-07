@@ -168,20 +168,21 @@ The Platform and Authentication Features provide secure vendor access to the sel
 ### Overall Status
 
 - Core platform/authentication implementation is mostly complete and operational.
-- Vendor authentication and portal access flows are implemented and tested.
-- Admin authentication now has a dedicated account model and initial endpoints, but full admin lifecycle flows are not yet complete.
+- Vendor authentication flows are implemented with lockout and rate-limit protections.
+- Admin authentication has a dedicated account model and core login/profile endpoints, but full admin lifecycle flows are still incomplete.
 
 ### Completed
 
 - JWT auth configuration and bcrypt-based password hashing (cost factor >= 12).
 - Vendor auth middleware for protected vendor API routes.
-- Login endpoint with rate limiting and account lockout handling.
+- Vendor login endpoint with rate limiting and account lockout handling.
 - Lockout auto-unlock behavior after lockout duration.
 - Registration with automatic ApprovedVendor linking by email.
 - Password reset request, token verification, and password update endpoints.
 - Token refresh endpoint for active sessions.
 - Logout endpoint with token revocation and audit event creation.
 - Shared token revocation infrastructure using Redis when configured, with in-memory fallback.
+- Vendor profile endpoint (GET /api/vendor/me) with vendor-scoped identity checks.
 - Vendor login and registration pages in the app.
 - Header-level logout button and auth-aware navigation.
 - AdminAccount model with dedicated admin identity fields (adminId, email, password hash, status, lockout/reset metadata).
@@ -199,6 +200,7 @@ The Platform and Authentication Features provide secure vendor access to the sel
 ### Gap Identified
 
 - Full admin account lifecycle is not yet implemented end-to-end (bootstrap, reset/update password, refresh/logout, unlock/status operations).
+- Reset/register flows still contain Mailgun TODO placeholders; reset token is still returned in non-production responses.
 
 ### Pending
 
@@ -211,11 +213,5 @@ The Platform and Authentication Features provide secure vendor access to the sel
 
 ### Verification Status
 
-- Last full verification run:
-  - Lint: passing
-  - Typecheck: passing
-  - Unit tests: passing
-  - Integration tests: passing
-  - Coverage run: passing
-  - Build: passing
-  - E2E: passing (auth page smoke coverage added)
+- Endpoint-level integration tests exist and pass for vendor and admin auth flows in the current suite.
+- A fresh full-project verification run should be used as the release gate after ongoing feature work is finalized.

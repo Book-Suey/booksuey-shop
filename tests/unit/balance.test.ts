@@ -15,7 +15,7 @@ describe('balance utilities', () => {
     const afterRelease = applyLedgerEntryToBalance(afterReservation, { entryType: 'release', amount: '1.00' })
     const afterPaid = applyLedgerEntryToBalance(afterRelease, { entryType: 'paid', amount: '2.00' })
 
-    expect(afterPaid.availableAmount.toFixed(2)).toBe('6.00')
+    expect(afterPaid.availableAmount.toFixed(2)).toBe('8.00')
     expect(afterPaid.paidAmount.toFixed(2)).toBe('2.00')
     expect(afterPaid.pendingAmount.toFixed(2)).toBe('0.00')
   })

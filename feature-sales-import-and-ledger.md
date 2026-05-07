@@ -163,17 +163,42 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 
 ### Overall Status
 
-- Planned and not yet implemented end-to-end.
-- Contract and rules are documented, but import, ledger, and balance models are still pending.
+- Core sales-import and ledger pipeline is implemented and test-covered.
+- Import validation, idempotency, row deduplication, SaleRecord/LedgerEntry creation, and balance snapshot recomputation are operational.
+- Remaining gaps are mostly around transactional hardening and additional operational/listing endpoints.
+
+### Completed
+
+- POST /api/admin/sales/imports endpoint implemented with:
+  - JSON and multipart input support.
+  - 10MB CSV size limit and 5000-row limit enforcement.
+  - Required-column and row-level validation with structured errors.
+  - Source mapping through ApprovedVendor -> Vendor linkage.
+  - Batch idempotency via sourcePeriod + checksum key.
+  - Item-level dedupe using deterministic sourceRowKey.
+- GET /api/admin/sales/:batchId endpoint implemented for import status/details retrieval.
+- Models implemented and wired:
+  - SalesImportBatch
+  - SaleRecord
+  - LedgerEntry
+  - BalanceSnapshot
+- Ledger amount rule implemented as max(Cost, Credit).
+- Accepted rows create SaleRecord + LedgerEntry entries and trigger balance snapshot recomputation.
+- Audit event creation on completed imports.
+- Unit and integration tests implemented for parser behavior, duplicate handling, idempotency, and end-to-end import effects.
+
+### Partially Complete
+
+- Import writes are not wrapped in a single explicit multi-document transaction.
+- Import status visibility currently supports batch-by-id retrieval; broader admin listing/reporting endpoints are still limited.
 
 ### Pending
 
-- Sales import endpoints and pipeline implementation.
-- SaleRecord, LedgerEntry, and BalanceSnapshot model implementation.
-- Import idempotency and deduplication persistence.
-- Vendor mapping and import summary reporting.
-- Route-level integration tests for malformed, duplicate, and successful imports.
+- Transactional hardening for multi-write import commit paths.
+- Expanded admin import observability endpoints (for example, list/filter across batches).
+- Additional edge-case integration tests for failure/retry behavior under partial-write fault injection.
 
 ### Verification Status
 
-- Implementation verification pending until routes and models are added.
+- Unit and integration tests for sales import and ledger flow exist and are passing in the current suite.
+- A fresh full-project verification run should be used as the release gate after ongoing feature work is finalized.
