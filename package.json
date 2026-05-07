@@ -21,6 +21,8 @@
     "@iconify-json/simple-icons": "^1.2.78",
     "@nuxt/ui": "^4.6.1",
     "bcrypt": "^6.0.0",
+    "csv-parse": "^6.2.1",
+    "decimal.js": "^10.6.0",
     "jsonwebtoken": "^9.0.3",
     "mailgun.js": "^13.0.0",
     "mongoose": "^9.6.1",

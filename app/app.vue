@@ -47,7 +47,11 @@ useSeoMeta({
           to="/"
           class="app-brand"
         >
-          <span class="app-brand__mark">BS</span>
+          <img
+            src="/LogoIcon.svg"
+            alt="Book Suey logo"
+            class="app-brand__mark"
+          >
           <span class="app-brand__text">
             <span class="app-brand__name">Book Suey</span>
             <span class="app-brand__meta">Vendor Portal</span>

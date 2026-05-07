@@ -23,7 +23,7 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 - Link sales to vendor accounts via ApprovedVendor mapping
 - Calculate ledger amount from max(Cost, Credit) for correct payout
 - Reject malformed imports with row-level validation errors
-- Deduplicate rows using a deterministic row key
+- Deduplicate rows using a deterministic item-level row key
 - Prevent duplicate full-batch imports using a batch idempotency key
 - Produce an import summary with accepted, rejected, and duplicate counts
 - Create ledger entries from accepted sales rows with transaction details
@@ -41,11 +41,11 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 - Source column format is first_name + " " + last_name (concatenation)
 - Currency is fixed as USD; currency field in imports must be "USD"
 - Batch idempotency key uses source period plus uploaded file checksum
-- Row dedupe key uses Date + Sale/Order ID
+- Row dedupe key uses a deterministic fingerprint of each sold item row, not Sale/Order ID alone
 - File upload limits: 10MB max CSV size, 5000 rows max per batch
 - Re-uploading the same batch must not double-credit vendors
 - Ledger amount is derived from max(Cost, Credit) columns
-- saleOrderId is admin-only for POS lookup
+- saleOrderId is a source-system reference only and remains admin-only for POS lookup
 - Title, Quantity, Unit, Discount, Extended are vendor-visible for transparency
 
 ## Edge Cases
@@ -95,8 +95,8 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 3. **Vendor Mapping and Row Processing**
    - Parse Source column to match ApprovedVendor records
    - Resolve vendorId from Source via ApprovedVendor mapping
-   - Generate saleId from Sale/Order ID
-   - Create sourceRowKey from Date + Sale/Order ID
+   - Generate a unique application-level identity for each sold item row
+   - Create sourceRowKey from a deterministic fingerprint of each sold item row
    - Extract vendor-visible transaction details: Title, Quantity, Unit, Discount, Extended
    - Store admin-only saleOrderId for POS lookup
    - Skip and report rows with unmapped Source values
@@ -104,7 +104,6 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 
    **Tests:**
    - Unit test for Source parsing and ApprovedVendor matching
-   - Unit test for saleId generation
    - Unit test for sourceRowKey generation
    - Integration test for unmapped Source reporting
    - Unit test for vendor-visible fields extraction
@@ -125,7 +124,7 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
    - Create SaleRecord for each accepted row with vendorId (includes title, quantity, unit, discount, extended)
    - Store admin-only saleOrderId for POS lookup
    - Calculate ledger amount as max(Cost, Credit)
-   - Create LedgerEntry for each sale with entryType "sale" that references the SaleRecord via referenceId
+   - Create LedgerEntry for each sale with entryType "sale" that references the SaleRecord's application-level identity via referenceId
    - Set entry amount to calculated value (max of Cost or Credit) - THIS affects vendor balance
    - Vendor-visible fields (title, quantity, unit, discount, extended) are fetched from linked SaleRecord
    - Store timestamp from soldAt
@@ -156,7 +155,7 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 - IMPORT_MISSING_REQUIRED_COLUMN - One or more required columns are missing.
 - IMPORT_INVALID_ROW_DATA - A row has invalid date/time, amount, quantity, or unit values.
 - IMPORT_DUPLICATE_BATCH - Batch idempotency key already exists.
-- IMPORT_DUPLICATE_ROW - Row dedupe key already processed.
+- IMPORT_DUPLICATE_ROW - Item-level row dedupe key already processed.
 - IMPORT_UNMAPPED_SOURCE - Source value cannot be mapped to an ApprovedVendor.
 - AUTH_FORBIDDEN_ADMIN_REQUIRED - Caller is not an authenticated admin.
 
