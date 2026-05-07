@@ -65,10 +65,46 @@ function normalizeSource(value: string): string {
 }
 
 function parseDateTime(date: string, time: string): Date | null {
-  const soldAt = new Date(`${date} ${time}`)
-  if (Number.isNaN(soldAt.getTime())) {
+  const dateMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(date.trim())
+  const timeMatch = /^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/.exec(time.trim())
+
+  if (!dateMatch || !timeMatch) {
     return null
   }
+
+  const month = Number.parseInt(dateMatch[1], 10)
+  const day = Number.parseInt(dateMatch[2], 10)
+  const year = Number.parseInt(dateMatch[3], 10)
+  const hour12 = Number.parseInt(timeMatch[1], 10)
+  const minute = Number.parseInt(timeMatch[2], 10)
+  const meridiem = timeMatch[3].toUpperCase()
+
+  if (
+    month < 1 || month > 12 ||
+    day < 1 || day > 31 ||
+    hour12 < 1 || hour12 > 12 ||
+    minute < 0 || minute > 59
+  ) {
+    return null
+  }
+
+  let hour24 = hour12 % 12
+  if (meridiem === 'PM') {
+    hour24 += 12
+  }
+
+  const soldAt = new Date(year, month - 1, day, hour24, minute, 0, 0)
+  if (
+    Number.isNaN(soldAt.getTime()) ||
+    soldAt.getFullYear() !== year ||
+    soldAt.getMonth() !== month - 1 ||
+    soldAt.getDate() !== day ||
+    soldAt.getHours() !== hour24 ||
+    soldAt.getMinutes() !== minute
+  ) {
+    return null
+  }
+
   return soldAt
 }
 
