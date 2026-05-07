@@ -10,6 +10,7 @@ export default defineEventHandler(async (event) => {
     && !path.startsWith('/api/vendor/login')
     && !path.startsWith('/api/vendor/register')
     && !path.startsWith('/api/vendor/reset-password')
+    && !path.startsWith('/api/vendor/update-password')
     && !path.startsWith('/api/vendor/verify-reset-token')
 
   if (!isProtectedRoute) {

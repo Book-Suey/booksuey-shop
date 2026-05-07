@@ -3,6 +3,7 @@ import { Vendor } from '../../models/Vendor'
 import { getPasswordResetExpiryMs } from '../../config/auth'
 import { connectToDatabase } from '../../config/database'
 import { AuditEvent } from '../../models/AuditEvent'
+import { sendVendorPasswordResetEmail } from '../../utils/email'
 import crypto from 'crypto'
 
 const resetRequestSchema = z.object({
@@ -40,6 +41,19 @@ export default defineEventHandler(async (event) => {
   vendor.passwordResetExpires = resetExpires
   await vendor.save()
 
+  const resetPath = `/reset-password?token=${resetToken}`
+
+  try {
+    await sendVendorPasswordResetEmail({
+      recipientEmail: vendor.email,
+      recipientName: vendor.displayName || vendor.legalName,
+      resetPath,
+      expiresAt: resetExpires
+    })
+  } catch (emailError: unknown) {
+    console.warn('Password reset email delivery failed', emailError)
+  }
+
   // Create audit event
   await AuditEvent.create({
     auditEventId: `audit_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -50,10 +64,6 @@ export default defineEventHandler(async (event) => {
     entityId: vendor.vendorId,
     createdAt: new Date()
   })
-
-  // TODO: Send email via Mailgun
-  // For now, return the token for testing purposes
-  // In production, this would be sent via email
 
   return {
     message: 'If the email exists, a reset link has been sent.',

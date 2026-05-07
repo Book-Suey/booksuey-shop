@@ -11,6 +11,9 @@ export interface IPayoutRequest {
   currency: 'USD'
   status: PayoutRequestStatus
   requestedAt: Date
+  reviewedBy?: string
+  reviewNote?: string
+  rejectionReason?: string
   approvedAt?: Date
   rejectedAt?: Date
   disbursingAt?: Date
@@ -28,6 +31,9 @@ const PayoutRequestSchema = new mongoose.Schema<IPayoutRequest>(
     currency: { type: String, enum: ['USD'], required: true, default: 'USD' },
     status: { type: String, enum: PAYOUT_REQUEST_STATUSES, required: true, default: 'requested' },
     requestedAt: { type: Date, required: true },
+    reviewedBy: { type: String },
+    reviewNote: { type: String },
+    rejectionReason: { type: String },
     approvedAt: { type: Date },
     rejectedAt: { type: Date },
     disbursingAt: { type: Date },

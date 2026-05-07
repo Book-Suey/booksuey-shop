@@ -6,6 +6,7 @@ export type AuditAction
   = | 'vendor_registered'
     | 'admin_login'
     | 'vendor_created'
+    | 'vendor_invited'
     | 'vendor_login'
     | 'vendor_logout'
     | 'password_reset_requested'
