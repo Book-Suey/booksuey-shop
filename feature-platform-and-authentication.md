@@ -209,6 +209,8 @@ The Platform and Authentication Features provide secure vendor access to the sel
 - Admin account status update and unlock operations.
 - Admin unlock capability for locked vendor accounts.
 - Mailgun-backed email delivery in auth flows (reset/register still include TODO placeholders in route handlers).
+- Admin authentication UI pages/elements (admin login and admin session entry points).
+- Vendor password-reset UI pages/elements (request reset, verify token, set new password).
 - Broader route-level integration tests for endpoint behavior (beyond utility/model focused coverage).
 
 ### Verification Status

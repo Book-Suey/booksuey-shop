@@ -468,6 +468,39 @@ Minimum required tests:
 - Critical workflows have unit, integration, and end-to-end coverage
 - Audit logs, notifications, and operational monitoring are in place
 
+## Status Overview (as of 2026-05-07)
+
+### Overall Status
+
+- Backend/API implementation for Phases 1 through 5 is largely in place and covered by unit/integration tests.
+- Phase 6 has started with admin visibility endpoints (audit history, import status, payout failure reconciliation).
+- UI implementation is still limited compared with documented feature scope.
+
+### Completed
+
+- Platform/vendor/admin authentication core flows and route protection.
+- Vendor management APIs (ApprovedVendor and Vendor CRUD-style admin operations).
+- Sales import/ledger engine with validation, idempotency, and balance snapshot recomputation.
+- Vendor financial APIs (sales, ledger, balance, payout request create/history).
+- Admin payout review/disbursement APIs (queue, approve/reject, paid/failed, idempotency, reconciliation paths).
+- Admin operations visibility APIs for audit/import/payout-failure review.
+
+### Partially Complete
+
+- Operational hardening areas (email, structured logging/alerts, backup/recovery automation) remain partial.
+- Some multi-document write paths are not yet fully transaction-hardened in all flows.
+
+### Pending
+
+- Missing UI surfaces for admin and vendor workflows beyond registration/login/basic dashboard shell.
+- Mailgun-backed transactional notifications and broader operational controls.
+- Completion of remaining lifecycle endpoints and operator workflows called out in feature detail docs.
+
+### Verification Status
+
+- Current CI-style verification commands are passing locally (build, lint, typecheck, unit/integration/e2e/coverage).
+- Final release readiness remains blocked on operational controls and missing UI implementation.
+
 ## Out of Scope for MVP
 
 ### Deferred features

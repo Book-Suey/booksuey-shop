@@ -213,17 +213,37 @@ The Admin Payout Review and Disbursement Features allow administrators to review
 
 ### Overall Status
 
-- Planned and not yet implemented end-to-end.
-- Business flow and state machine are documented, with transactional requirements defined.
+- Admin payout/disbursement backend workflow is implemented and integration tested.
+- Queue review, approve/reject decisions, PayPal/Venmo disbursement recording, and failure recovery paths are operational at the API level.
+- Primary remaining gap for this feature is admin-facing UI coverage and provider-side live integration hardening.
+
+### Completed
+
+- GET /api/admin/payout-requests queue endpoint with status/date filtering and requiresAction tagging.
+- POST /api/admin/payout-requests/:payoutId/approve with state validation and review metadata.
+- POST /api/admin/payout-requests/:payoutId/reject with rejection metadata and reserve release ledger entry.
+- POST /api/admin/disbursements with:
+  - PayPal/Venmo method enforcement.
+  - Idempotency on payoutRequestId + idempotencyKey.
+  - disbursing -> paid/failed transitions.
+  - Provider reference storage and timestamping.
+  - Failed disbursement reserve restoration via release ledger entry.
+- PaymentDisbursement model with method/status enums and unique idempotency index.
+- Payout request review fields added (reviewedBy, reviewNote, rejectionReason).
+- Integration tests implemented for queue filtering, approve/reject flows, paid/failed outcomes, unsupported methods, and idempotent replay.
+
+### Partially Complete
+
+- Transaction path is implemented with a fallback strategy for non-replica test environments; production transaction guarantees still depend on deployment topology.
+- Disbursement outcome is modeled and persisted, but live provider API calls/retry semantics are not integrated yet.
 
 ### Pending
 
-- Admin payout-request queue endpoint.
-- Approve/reject endpoints with transactional reservation logic.
-- Disbursement endpoint and provider integration path.
-- PaymentDisbursement model and idempotency persistence.
-- Integration tests for concurrency, provider failure, and recovery paths.
+- Admin UI pages/elements for payout queue management, approve/reject actions, and disbursement execution.
+- Concurrency-focused tests for simultaneous admin actions against the same payout request.
+- Live provider integration, retry/backoff policy, and reconciliation against provider-side outcomes.
 
 ### Verification Status
 
-- Implementation verification pending until payout routes and models are added.
+- Unit/integration/build/typecheck/e2e/coverage checks are passing in the current suite.
+- A fresh full-project verification run should be used as the release gate after UI work is completed.

@@ -157,9 +157,9 @@ The Vendor Financial Views and Payout Features provide vendors with transparent 
 
 ### Overall Status
 
-- Vendor financial API surface is mostly implemented and integration tested.
-- Sales, ledger, balance, and payout-request vendor endpoints are available with vendor scoping and validation.
-- Remaining gaps are primarily admin-side payout progression/disbursement and transaction-level hardening.
+- Vendor financial backend APIs are implemented and integration tested.
+- Sales, ledger, balance, and payout-request endpoints are available with vendor scoping, validation, and rate limiting.
+- Remaining gaps are primarily transaction hardening and fully data-driven vendor UI completion.
 
 ### Completed
 
@@ -179,13 +179,13 @@ The Vendor Financial Views and Payout Features provide vendors with transparent 
 ### Partially Complete
 
 - Payout request creation and reservation writes are not wrapped in an explicit transaction.
-- Full payout state progression (approved/rejected/disbursing/paid/failed) depends on admin payout/disbursement flows that are not fully implemented yet.
+- Vendor dashboard page exists, but uses static placeholder financial/payout content rather than binding to live API data.
 
 ### Pending
 
-- Admin-driven payout review/disbursement endpoints to drive status transitions beyond requested.
-- Failure/recovery paths that release or settle reserved funds through disbursement outcomes.
-- Optional UI completion for vendor-facing financial views if API-complete status should also include portal screens.
+- Transactional hardening for vendor payout-request creation/reservation writes.
+- Vendor UI completion for sales history, ledger history, balance summary, payout request creation, and payout status timeline backed by /api/vendor endpoints.
+- Vendor-facing UX states for empty/error/loading, validation feedback, and retry behavior.
 
 ### Verification Status
 

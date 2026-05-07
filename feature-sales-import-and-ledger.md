@@ -165,7 +165,7 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 
 - Core sales-import and ledger pipeline is implemented and test-covered.
 - Import validation, idempotency, row deduplication, SaleRecord/LedgerEntry creation, and balance snapshot recomputation are operational.
-- Remaining gaps are mostly around transactional hardening and additional operational/listing endpoints.
+- Remaining gaps are mostly around transactional hardening and admin UI coverage for import operations.
 
 ### Completed
 
@@ -190,12 +190,12 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 ### Partially Complete
 
 - Import writes are not wrapped in a single explicit multi-document transaction.
-- Import status visibility currently supports batch-by-id retrieval; broader admin listing/reporting endpoints are still limited.
+- Import-status visibility is now available both by batchId and via admin listing/filtering endpoints, but no admin UI is wired for these views.
 
 ### Pending
 
 - Transactional hardening for multi-write import commit paths.
-- Expanded admin import observability endpoints (for example, list/filter across batches).
+- Admin UI pages/elements for CSV upload, import history listing/filtering, failed-row review, and unmapped source triage.
 - Additional edge-case integration tests for failure/retry behavior under partial-write fault injection.
 
 ### Verification Status

@@ -107,7 +107,7 @@ The Vendor Management Features provide comprehensive tools for administrators to
 
 - Vendor management API coverage is mostly complete for MVP admin operations.
 - ApprovedVendor and Vendor CRUD-style admin endpoints are implemented and integration tested.
-- Audit coverage is in place for create/update/delete operations, with some lifecycle controls still pending.
+- Audit coverage is in place for create/update/delete operations, with some lifecycle controls and admin UI still pending.
 
 ### Completed
 
@@ -137,6 +137,7 @@ The Vendor Management Features provide comprehensive tools for administrators to
 - Explicit admin unlock endpoint/control for locked vendor accounts.
 - Consignment agreement metadata model and dedicated CRUD endpoints if this remains an MVP requirement.
 - Additional route-level tests for delete flows and edge-case authorization coverage.
+- Admin UI pages/elements for ApprovedVendor and Vendor management (list/create/edit/status workflows).
 
 ### Verification Status
 

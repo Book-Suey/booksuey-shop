@@ -213,3 +213,38 @@ The Operational Features provide the infrastructure and tooling needed to run th
 - EMAIL_QUEUE_RETRY_EXHAUSTED - Email retries exceeded configured maximum.
 - ALERT_DISPATCH_FAILED - Monitoring system failed to send alert notification.
 - BACKUP_RESTORE_VALIDATION_FAILED - Restore drill completed with data mismatch.
+
+## Status Overview (as of 2026-05-07)
+
+### Overall Status
+
+- Operational hardening is partially implemented.
+- Core audit/import/payout visibility APIs now exist for admin operations.
+- Email delivery, structured logging/alerts, and backup/recovery automation remain largely pending.
+
+### Completed
+
+- Audit events are emitted across major auth, vendor management, import, payout decision, and disbursement flows.
+- Admin visibility endpoints implemented for:
+  - Audit history (filterable).
+  - Import status and error reporting (filterable).
+  - Failed payout reconciliation details.
+- Integration tests implemented for admin operations visibility endpoints.
+
+### Partially Complete
+
+- Environment configuration exists, but broader typed startup validation and operational policy enforcement are not fully comprehensive.
+- Token revocation supports Redis when configured, with in-memory fallback for local/non-Redis contexts.
+
+### Pending
+
+- Mailgun-backed transactional emails for auth and payout lifecycle events.
+- Structured request-id logging middleware and standardized operational log schema.
+- Alert dispatching/integration for import failures, disbursement failures, and auth anomalies.
+- Backup/restore automation, retention enforcement tooling, and recovery validation drills.
+- Release-readiness checklist automation for operational controls.
+
+### Verification Status
+
+- Integration coverage exists for visibility endpoints and underlying workflow event creation.
+- A fresh full-project verification run should be used as the release gate after remaining operational controls are implemented.
