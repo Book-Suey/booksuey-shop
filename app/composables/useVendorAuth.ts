@@ -66,6 +66,12 @@ export function useVendorAuth() {
     persistSession()
   }
 
+  function applySession(payload: LoginResponse): void {
+    token.value = payload.token
+    vendor.value = payload.vendor
+    persistSession()
+  }
+
   function initializeFromStorage(): void {
     if (initialized.value || !import.meta.client) {
       return
@@ -121,9 +127,7 @@ export function useVendorAuth() {
       body: payload
     })
 
-    token.value = response.token
-    vendor.value = response.vendor
-    persistSession()
+    applySession(response)
 
     return response
   }
@@ -168,6 +172,7 @@ export function useVendorAuth() {
     login,
     register,
     logout,
+    applySession,
     clearSession
   }
 }

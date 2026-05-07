@@ -1,6 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: "guest-only",
+  layout: "default",
 });
 
 const auth = useUnifiedAuth();
@@ -30,8 +31,7 @@ async function submitLogin(): Promise<void> {
     await navigateTo("/");
   } catch (error: unknown) {
     const statusMessage = (error as { statusMessage?: string })?.statusMessage;
-    formError.value =
-      statusMessage || "Unable to sign in with those credentials.";
+    formError.value = statusMessage || "Unable to sign in as admin.";
   } finally {
     isSubmitting.value = false;
   }
@@ -41,10 +41,10 @@ async function submitLogin(): Promise<void> {
 <template>
   <section class="auth-page">
     <article class="auth-card">
-      <p class="auth-kicker">Vendor access</p>
-      <h1 class="auth-title">Sign in to Book Suey</h1>
+      <p class="auth-kicker">Admin access</p>
+      <h1 class="auth-title">Sign in to Admin Console</h1>
       <p class="auth-copy">
-        Access your sales history, ledger activity, and payout requests.
+        Manage vendors, imports, payouts, and operational visibility.
       </p>
 
       <form class="auth-form" @submit.prevent="submitLogin">
@@ -55,7 +55,6 @@ async function submitLogin(): Promise<void> {
             type="email"
             required
             autocomplete="email"
-            placeholder="name@example.com"
           />
         </label>
 
@@ -66,31 +65,21 @@ async function submitLogin(): Promise<void> {
             type="password"
             required
             autocomplete="current-password"
-            placeholder="••••••••"
           />
         </label>
-
-        <NuxtLink to="/forgot-password" class="auth-inline-link">
-          Forgot password?
-        </NuxtLink>
 
         <p v-if="formError" class="auth-error">
           {{ formError }}
         </p>
 
         <button
-          class="portal-button portal-button--primary"
           type="submit"
+          class="portal-button portal-button--primary"
           :disabled="isSubmitting"
         >
           {{ isSubmitting ? "Signing in..." : "Sign in" }}
         </button>
       </form>
-
-      <p class="auth-switch">
-        New to Book Suey?
-        <NuxtLink to="/register"> Create your vendor account </NuxtLink>
-      </p>
     </article>
   </section>
 </template>

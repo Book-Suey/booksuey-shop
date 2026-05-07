@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { connectToDatabase } from '../../config/database'
 import { getAccountLockoutConfig } from '../../config/auth'
 import { AdminAccount } from '../../models/AdminAccount'
+import { Vendor } from '../../models/Vendor'
 import { AuditEvent } from '../../models/AuditEvent'
 import { generateToken, verifyPassword } from '../../utils/auth'
 import { checkRateLimit, getRateLimitKey } from '../../utils/rateLimit'
@@ -39,6 +40,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const admin = await AdminAccount.findOne({ email: normalizedEmail })
+  const vendor = await Vendor.findOne({ email: normalizedEmail })
+
+  if (admin && vendor) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Role conflict detected for this email. Contact support.'
+    })
+  }
 
   if (!admin) {
     throw createError({

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { Vendor } from '../../models/Vendor'
+import { AdminAccount } from '../../models/AdminAccount'
 import { ApprovedVendor } from '../../models/ApprovedVendor'
 import { hashPassword } from '../../utils/auth'
 import { connectToDatabase } from '../../config/database'
@@ -36,6 +37,14 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 409,
       statusMessage: 'A vendor with this email already exists'
+    })
+  }
+
+  const existingAdmin = await AdminAccount.findOne({ email: normalizedEmail })
+  if (existingAdmin) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'An admin account with this email already exists'
     })
   }
 
