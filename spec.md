@@ -304,7 +304,6 @@ Recommended implementation stack: Nuxt + Nitro + MongoDB Atlas + Mongoose + Mail
 
 ### 10.1 Admin Endpoints
 
-- POST /api/admin/login
 - POST /api/admin/refresh
 - POST /api/admin/logout
 - GET /api/admin/me
@@ -384,8 +383,8 @@ Only a subset of these fields are extracted and stored in the sales log database
 - saleId (generated from Sale/Order ID)
 - vendorId (resolved from Source column via ApprovedVendor mapping)
 - soldAt (from Date + Time)
-- grossAmount (from Extended)
-- commissionAmount (from Discount)
+- grossAmount (from max(Cost, Credit))
+- commissionAmount (from max(Cost, Credit))
 - currency (USD)
 - sourceRowKey (from Date + Sale/Order ID for deduplication)
 - Transaction details stored in SaleRecord: title, quantity, unit, discount, extended (vendor-visible)
@@ -396,7 +395,7 @@ Only a subset of these fields are extracted and stored in the sales log database
 
 - Ledger amount is derived from the greater of Cost or Credit columns
 - This ensures vendors receive the correct payout regardless of which value is higher
-- Extended (grossAmount) is stored separately for transparency but is not the payout amount
+- Extended is stored separately for transparency; grossAmount is derived from max(Cost, Credit)
 
 ### 11.4 Validation Rules
 

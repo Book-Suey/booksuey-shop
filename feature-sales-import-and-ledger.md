@@ -17,7 +17,7 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 
 - Upload quarterly CSV files in ReportSalesDetail format
 - Parse and validate the fixed input format regardless of which fields are stored
-- Extract fields: Date+Time (soldAt), Source (for vendor mapping), Extended (grossAmount), Discount (commissionAmount), Cost, Credit
+- Extract fields: Date+Time (soldAt), Source (for vendor mapping), Extended, Discount, Cost, Credit
 - Extract vendor-visible transaction details: Title (item description), Quantity, Unit (per item cost)
 - Map Source column to ApprovedVendor records (concatenation of first_name + last_name)
 - Link sales to vendor accounts via ApprovedVendor mapping
@@ -41,10 +41,11 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
 - Source column format is first_name + " " + last_name (concatenation)
 - Currency is fixed as USD; currency field in imports must be "USD"
 - Batch idempotency key uses source period plus uploaded file checksum
-- Row dedupe key uses a deterministic fingerprint of each sold item row, not Sale/Order ID alone
+- Sale/Order ID is not unique in the POS export and can legitimately repeat across line items in the same transaction
+- Row dedupe key uses a deterministic fingerprint of each sold item row based on normalized timestamp, order reference, and stable POS line-item fields, not Sale/Order ID alone
 - File upload limits: 10MB max CSV size, 5000 rows max per batch
 - Re-uploading the same batch must not double-credit vendors
-- Ledger amount is derived from max(Cost, Credit) columns
+- grossAmount, commissionAmount, and ledger amount are derived from max(Cost, Credit) columns
 - saleOrderId is a source-system reference only and remains admin-only for POS lookup
 - Title, Quantity, Unit, Discount, Extended are vendor-visible for transparency
 
@@ -96,7 +97,7 @@ The Sales Import and Ledger Features handle quarterly CSV file uploads, validate
    - Parse Source column to match ApprovedVendor records
    - Resolve vendorId from Source via ApprovedVendor mapping
    - Generate a unique application-level identity for each sold item row
-   - Create sourceRowKey from a deterministic fingerprint of each sold item row
+   - Create sourceRowKey from a deterministic fingerprint of each sold item row using normalized soldAt plus stable POS line-item fields
    - Extract vendor-visible transaction details: Title, Quantity, Unit, Discount, Extended
    - Store admin-only saleOrderId for POS lookup
    - Skip and report rows with unmapped Source values

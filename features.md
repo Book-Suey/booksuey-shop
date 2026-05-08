@@ -61,7 +61,7 @@ The product should prioritize financial correctness, auditability, and operation
 
 - Upload quarterly CSV files in ReportSalesDetail format
 - Parse and validate the fixed input format regardless of which fields are stored
-- Extract fields: Date+Time (soldAt), Source (for vendor mapping), Extended (grossAmount), Discount (commissionAmount), Cost, Credit
+- Extract fields: Date+Time (soldAt), Source (for vendor mapping), Extended, Discount, Cost, Credit
 - Extract vendor-visible transaction details: Title (item description), Quantity, Unit (per item cost)
 - Map Source column to ApprovedVendor records (concatenation of first_name + last_name)
 - Link sales to vendor accounts via ApprovedVendor mapping

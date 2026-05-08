@@ -38,7 +38,6 @@ Implement the missing admin and vendor UI surfaces in a sequence that unlocks co
   - [app/pages/vendor/balance.vue](app/pages/vendor/balance.vue)
   - [app/pages/vendor/payouts.vue](app/pages/vendor/payouts.vue)
 - Implemented admin pages:
-  - [app/pages/admin/login.vue](app/pages/admin/login.vue)
   - [app/pages/admin/index.vue](app/pages/admin/index.vue)
   - [app/pages/admin/approved-vendors.vue](app/pages/admin/approved-vendors.vue)
   - [app/pages/admin/approved-vendors/new.vue](app/pages/admin/approved-vendors/new.vue)
@@ -46,7 +45,7 @@ Implement the missing admin and vendor UI surfaces in a sequence that unlocks co
   - [app/pages/admin/vendors.vue](app/pages/admin/vendors.vue)
   - [app/pages/admin/vendors/new.vue](app/pages/admin/vendors/new.vue)
   - [app/pages/admin/vendors/[vendorId].vue](app/pages/admin/vendors/[vendorId].vue)
-  - [app/pages/admin/imports.vue](app/pages/admin/imports.vue)
+  - [app/pages/admin/imports/index.vue](app/pages/admin/imports/index.vue)
   - [app/pages/admin/imports/upload.vue](app/pages/admin/imports/upload.vue)
   - [app/pages/admin/imports/[batchId].vue](app/pages/admin/imports/[batchId].vue)
   - [app/pages/admin/payout-requests.vue](app/pages/admin/payout-requests.vue)
@@ -161,22 +160,21 @@ Status: Complete
 
 Progress notes:
 
-- Admin login and protected shell are implemented.
-- Admin navigation now exposes the next workflow areas as routes are added.
+- Admin access now uses the unified login flow at [app/pages/login.vue](app/pages/login.vue).
+- Admin protected shell remains in place and admin navigation exposes the workflow areas.
 
 ### Pages
 
-1. `/admin/login` (new)
-2. `/admin` (new dashboard shell)
+1. `/login` (shared unified login)
+2. `/admin` (dashboard shell)
 
 ### API Bindings
 
-- POST [server/api/admin/login.post.ts](server/api/admin/login.post.ts)
 - GET [server/api/admin/me.get.ts](server/api/admin/me.get.ts)
 
 ### Acceptance Criteria
 
-- Admin can sign in and land in protected admin area.
+- Admin can sign in through the unified login and land in protected admin area.
 - Non-admin token/user cannot access admin pages.
 
 ## Phase 4: Admin Vendor Management

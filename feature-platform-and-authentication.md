@@ -140,17 +140,16 @@ The Platform and Authentication Features provide secure vendor access to the sel
    - Integration test for expired token rejection
    - Integration test for logout token invalidation
 
-8. **Admin Authentication Endpoints**
-   - Implement POST /api/admin/login endpoint
-   - Validate admin credentials against dedicated admin account model
-   - Enforce admin account status and lockout checks
-   - Generate and return admin-role JWT token
-   - Implement rate limiting (5 attempts per 15 minutes)
+8. **Admin Authentication Access Control**
+   - Use the shared login endpoint for both admin and vendor sign-in
+   - Enforce admin account status and lockout checks during unified login
+   - Generate and return admin-role JWT token for admin identities
+   - Keep rate limiting aligned with the shared login flow
 
    **Tests:**
-   - Integration test for successful admin login with active account
-   - Integration test for rejected admin login with disabled account
-   - Integration test for admin lockout after repeated failed attempts
+   - Integration test for successful unified login with admin credentials
+   - Integration test for rejected admin access when account is disabled
+   - Integration test for admin profile lookup from a valid admin token
 
 9. **Admin Account Lifecycle and Bootstrap**
    - Implement one-time bootstrap flow for initial admin account creation
