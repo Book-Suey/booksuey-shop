@@ -100,7 +100,7 @@ const cards = computed(() => {
           Open audit trail
         </NuxtLink>
         <NuxtLink
-          to="/admin/payout-failures"
+          to="/admin/payout-requests/payout-failures"
           class="portal-button portal-button--secondary"
         >
           Open payout failures

@@ -1,5 +1,6 @@
 interface UnifiedAdminProfile {
   adminId: string
+  displayName: string
   email: string
   status: 'active' | 'disabled'
   lastLoginAt?: string

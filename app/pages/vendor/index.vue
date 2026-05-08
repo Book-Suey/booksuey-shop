@@ -1,18 +1,8 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'admin-auth',
-  layout: 'admin'
+  middleware: 'vendor-auth',
+  layout: 'vendor'
 })
-
-interface VendorRecord {
-  vendorId: string
-  legalName: string
-  displayName: string
-  email: string
-  phone?: string
-  status: 'active' | 'inactive'
-  approvedVendorId?: string
-}
 
 interface VendorBalance {
   pendingAmount: string
@@ -27,7 +17,6 @@ interface VendorSale {
   title: string
   grossAmount: string
   commissionAmount: string
-  currency: string
 }
 
 interface VendorLedgerEntry {
@@ -51,10 +40,7 @@ interface VendorPayoutRequest {
   requestedAt: string
 }
 
-const route = useRoute()
-const auth = useAdminAuth()
-
-const vendorId = computed(() => String(route.params.vendorId || ''))
+const auth = useVendorAuth()
 
 function formatCurrency(amount: string, currency = 'USD'): string {
   const parsed = Number.parseFloat(amount)
@@ -83,51 +69,42 @@ function formatDate(value: string): string {
   })
 }
 
-function formatDateTime(value: string): string {
-  const parsed = new Date(value)
-
-  if (Number.isNaN(parsed.getTime())) {
-    return value
-  }
-
-  return parsed.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  })
-}
-
 const { data, pending, error, refresh } = await useAsyncData(
-  'admin-vendor-overview-detail',
+  'vendor-overview-dashboard',
   async () => {
     await auth.ensureInitialized()
+    const headers = auth.authHeaders()
 
-    return await $fetch<{
-      vendor: VendorRecord
-      balance: VendorBalance
-      sales: VendorSale[]
-      ledgerEntries: VendorLedgerEntry[]
-      payoutRequests: VendorPayoutRequest[]
-    }>(`/api/admin/vendors/${vendorId.value}/overview`, {
-      method: 'GET',
-      headers: auth.authHeaders()
-    })
+    const [balanceResponse, salesResponse, ledgerResponse, payoutsResponse]
+      = await Promise.all([
+        $fetch<{ balance: VendorBalance }>('/api/vendor/balance', {
+          method: 'GET',
+          headers
+        }),
+        $fetch<{ sales: VendorSale[] }>('/api/vendor/sales', {
+          method: 'GET',
+          headers
+        }),
+        $fetch<{ ledgerEntries: VendorLedgerEntry[] }>('/api/vendor/ledger', {
+          method: 'GET',
+          headers
+        }),
+        $fetch<{ payoutRequests: VendorPayoutRequest[] }>(
+          '/api/vendor/payout-requests',
+          { method: 'GET', headers }
+        )
+      ])
+
+    return {
+      balance: balanceResponse.balance,
+      sales: salesResponse.sales.slice(0, 5),
+      ledgerEntries: ledgerResponse.ledgerEntries.slice(-5).reverse(),
+      payoutRequests: payoutsResponse.payoutRequests.slice(0, 5)
+    }
   },
   {
     server: false,
-    watch: [vendorId],
     default: () => ({
-      vendor: {
-        vendorId: '',
-        legalName: '',
-        displayName: '',
-        email: '',
-        phone: '',
-        status: 'active',
-        approvedVendorId: ''
-      },
       balance: {
         pendingAmount: '0',
         availableAmount: '0',
@@ -157,84 +134,50 @@ const payoutColumns = [
 </script>
 
 <template>
-  <section class="admin-page">
-    <header class="admin-page__header">
+  <section class="vendor-page">
+    <header class="vendor-page__header">
       <p class="auth-kicker">
-        Admin vendor management
+        Vendor dashboard
       </p>
       <h1 class="auth-title">
-        Vendor financial overview
+        Financial overview
       </h1>
       <p class="auth-copy">
-        Sales, ledger, balances, and payout activity for
-        <strong>{{ data.vendor.displayName || data.vendor.vendorId }}</strong>.
+        Live balance, sales activity, ledger entries, and payout request status.
       </p>
-
       <div class="vendor-actions">
         <NuxtLink
-          to="/admin/vendors"
+          to="/vendor/payouts"
+          class="portal-button portal-button--primary"
+        >
+          Request payout
+        </NuxtLink>
+        <NuxtLink
+          to="/vendor/ledger"
           class="portal-button portal-button--secondary"
         >
-          Back to list
+          View full ledger
         </NuxtLink>
       </div>
     </header>
 
     <AppLoadingState
       v-if="pending"
-      title="Loading vendor"
-      description="Fetching vendor details."
+      title="Loading overview"
+      description="Fetching your latest vendor financial data."
     />
 
     <AppErrorState
       v-else-if="error"
-      title="Unable to load vendor"
+      title="Unable to load dashboard"
       :message="
         (error as { statusMessage?: string })?.statusMessage
-          || 'Request failed.'
+          || 'Dashboard data request failed.'
       "
       @retry="refresh"
     />
 
     <template v-else>
-      <section class="admin-cards">
-        <article class="admin-card">
-          <p class="admin-card__label">
-            Vendor ID
-          </p>
-          <p class="panel-copy">
-            <strong>{{ data.vendor.vendorId }}</strong>
-          </p>
-        </article>
-
-        <article class="admin-card">
-          <p class="admin-card__label">
-            Status
-          </p>
-          <AppStatusBadge :status="data.vendor.status" />
-        </article>
-
-        <article class="admin-card">
-          <p class="admin-card__label">
-            Approved Vendor ID
-          </p>
-          <p class="panel-copy">
-            <strong>{{ data.vendor.approvedVendorId || "—" }}</strong>
-          </p>
-        </article>
-
-        <article class="admin-card">
-          <p class="admin-card__label">
-            Contact
-          </p>
-          <p class="panel-copy">
-            <strong>{{ data.vendor.email }}</strong>
-            <br>
-            {{ data.vendor.phone || "No phone on file" }}
-          </p>
-        </article>
-      </section>
-
       <section class="vendor-summary-grid">
         <article class="admin-card">
           <p class="admin-card__label">
@@ -269,21 +212,20 @@ const payoutColumns = [
           Balance as of
         </p>
         <p class="auth-copy auth-copy--compact">
-          {{ formatDateTime(data.balance.asOf) }}
+          {{ formatDate(data.balance.asOf) }}
         </p>
       </article>
 
       <article class="vendor-panel">
         <div class="vendor-panel__title">
           <h2>Recent sales</h2>
+          <NuxtLink to="/vendor/sales">View all</NuxtLink>
         </div>
-
         <AppEmptyState
           v-if="data.sales.length === 0"
           title="No sales yet"
-          description="No imported sales are linked to this vendor yet."
+          description="Imported sales will appear here once available."
         />
-
         <AppDataTable
           v-else
           :columns="salesColumns"
@@ -294,17 +236,10 @@ const payoutColumns = [
             {{ formatDate(row.soldAt as string) }}
           </template>
           <template #cell:grossAmount="{ row }">
-            {{
-              formatCurrency(row.grossAmount as string, row.currency as string)
-            }}
+            {{ formatCurrency(row.grossAmount as string) }}
           </template>
           <template #cell:commissionAmount="{ row }">
-            {{
-              formatCurrency(
-                row.commissionAmount as string,
-                row.currency as string
-              )
-            }}
+            {{ formatCurrency(row.commissionAmount as string) }}
           </template>
         </AppDataTable>
       </article>
@@ -312,14 +247,13 @@ const payoutColumns = [
       <article class="vendor-panel">
         <div class="vendor-panel__title">
           <h2>Recent ledger entries</h2>
+          <NuxtLink to="/vendor/ledger">View all</NuxtLink>
         </div>
-
         <AppEmptyState
           v-if="data.ledgerEntries.length === 0"
           title="No ledger entries yet"
-          description="Ledger movement appears after sales imports or payout actions."
+          description="Ledger movement appears after imports or payouts."
         />
-
         <div
           v-else
           class="vendor-feed"
@@ -339,7 +273,7 @@ const payoutColumns = [
               </p>
             </div>
             <div class="vendor-feed__right">
-              <p>{{ formatDateTime(entry.occurredAt) }}</p>
+              <p>{{ formatDate(entry.occurredAt) }}</p>
               <p>{{ formatCurrency(entry.amount, entry.currency) }}</p>
               <AppStatusBadge :status="entry.balanceImpact" />
             </div>
@@ -350,14 +284,13 @@ const payoutColumns = [
       <article class="vendor-panel">
         <div class="vendor-panel__title">
           <h2>Recent payout requests</h2>
+          <NuxtLink to="/vendor/payouts">Manage payouts</NuxtLink>
         </div>
-
         <AppEmptyState
           v-if="data.payoutRequests.length === 0"
           title="No payout requests"
-          description="No payouts have been requested for this vendor yet."
+          description="Submit your first payout request when funds are available."
         />
-
         <AppDataTable
           v-else
           :columns="payoutColumns"
@@ -365,7 +298,7 @@ const payoutColumns = [
           :row-key="(row) => row.payoutRequestId"
         >
           <template #cell:requestedAt="{ row }">
-            {{ formatDateTime(row.requestedAt as string) }}
+            {{ formatDate(row.requestedAt as string) }}
           </template>
           <template #cell:amount="{ row }">
             {{ formatCurrency(row.amount as string, row.currency as string) }}

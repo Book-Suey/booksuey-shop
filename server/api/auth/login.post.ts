@@ -5,6 +5,7 @@ import { AdminAccount } from '../../models/AdminAccount'
 import { Vendor } from '../../models/Vendor'
 import { AuditEvent } from '../../models/AuditEvent'
 import { generateToken, verifyPassword } from '../../utils/auth'
+import { formatAdminDisplayName } from '../../utils/displayName'
 import { checkRateLimit, getRateLimitKey } from '../../utils/rateLimit'
 
 const loginSchema = z.object({
@@ -124,6 +125,7 @@ export default defineEventHandler(async (event) => {
       token,
       admin: {
         adminId: admin.adminId,
+        displayName: formatAdminDisplayName(admin),
         email: admin.email,
         status: admin.status,
         lastLoginAt: admin.lastLoginAt

@@ -9,6 +9,7 @@ import { SaleRecord } from '../../server/models/SaleRecord'
 import { LedgerEntry } from '../../server/models/LedgerEntry'
 import { BalanceSnapshot } from '../../server/models/BalanceSnapshot'
 import { AuditEvent } from '../../server/models/AuditEvent'
+import { VerifiedNonVendorSource } from '../../server/models/VerifiedNonVendorSource'
 
 let mongoServer: MongoMemoryServer
 let multipartParts: Array<{ name?: string, data?: Uint8Array }> | undefined
@@ -51,6 +52,7 @@ beforeEach(async () => {
   await LedgerEntry.deleteMany({})
   await BalanceSnapshot.deleteMany({})
   await AuditEvent.deleteMany({})
+  await VerifiedNonVendorSource.deleteMany({})
   multipartParts = undefined
 })
 
@@ -87,7 +89,7 @@ describe('Admin Sales Import Endpoint', () => {
       approvedVendorId: 'BASIL-1'
     })
 
-    const csvContent = `${csvHeader}05/01/2026,10:15 AM,Jane Doe,12.50,2.50,8.00,7.00,Book A,1,12.50,SO-100\n`
+    const csvContent = `${csvHeader}2026-05-01,10:15 AM,Jane Doe,$12.50,$2.50,$8.00,$7.00,Book A,1,$12.50,SO-100\n`
 
     const { default: importSales } = await import('../../server/api/admin/sales/imports.post')
 
@@ -107,6 +109,11 @@ describe('Admin Sales Import Endpoint', () => {
     const saleRecords = await SaleRecord.find({ sourceBatchId: result.batchId })
     expect(saleRecords).toHaveLength(1)
     expect(saleRecords[0].saleOrderId).toBe('SO-100')
+    expect(saleRecords[0].grossAmount.toString()).toBe('12.50')
+    expect(saleRecords[0].commissionAmount.toString()).toBe('8.00')
+    expect(saleRecords[0].unit.toString()).toBe('12.50')
+    expect(saleRecords[0].cost.toString()).toBe('8.00')
+    expect(saleRecords[0].credit.toString()).toBe('7.00')
 
     const ledgerEntries = await LedgerEntry.find({ referenceId: String(saleRecords[0]._id) })
     expect(ledgerEntries).toHaveLength(1)
@@ -191,5 +198,143 @@ describe('Admin Sales Import Endpoint', () => {
     })).rejects.toMatchObject({
       statusCode: 409
     })
+  })
+
+  it('reconciles stale legacy saleId indexes before inserting sale records', async () => {
+    await ApprovedVendor.create({
+      basilId: 'BASIL-3',
+      firstName: 'Legacy',
+      lastName: 'Vendor',
+      email: 'legacy@example.com'
+    })
+
+    await Vendor.create({
+      vendorId: 'vendor_3',
+      legalName: 'Legacy Vendor LLC',
+      displayName: 'Legacy Vendor',
+      email: 'vendor-legacy@example.com',
+      passwordHash: 'hashed-password',
+      status: 'active',
+      approvedVendorId: 'BASIL-3'
+    })
+
+    await SaleRecord.collection.createIndex({ saleId: 1 }, { unique: true })
+
+    const csvContent = `${csvHeader}2026-05-01,2:28 PM,Legacy Vendor,$12.50,$2.50,$8.00,$7.00,Book A,1,$12.50,SO-500\n`
+
+    const { default: importSales } = await import('../../server/api/admin/sales/imports.post')
+
+    const result = await importSales({
+      headers: adminHeaders(),
+      body: {
+        sourcePeriod: '2026-Q2',
+        csvContent
+      }
+    }) as { summary: { accepted: number }, batchId: string }
+
+    expect(result.summary.accepted).toBe(1)
+
+    const saleRecords = await SaleRecord.find({ sourceBatchId: result.batchId })
+    expect(saleRecords).toHaveLength(1)
+
+    const indexes = await SaleRecord.collection.indexes()
+    expect(indexes.some(index => index.name === 'saleId_1')).toBe(false)
+    expect(indexes.some(index => index.name === 'sourceRowKey_1')).toBe(true)
+  })
+
+  it('imports distinct line items that share the same sale order id', async () => {
+    await ApprovedVendor.create({
+      basilId: 'BASIL-4',
+      firstName: 'Shared',
+      lastName: 'Order',
+      email: 'shared-order@example.com'
+    })
+
+    await Vendor.create({
+      vendorId: 'vendor_4',
+      legalName: 'Shared Order LLC',
+      displayName: 'Shared Order',
+      email: 'vendor-shared@example.com',
+      passwordHash: 'hashed-password',
+      status: 'active',
+      approvedVendorId: 'BASIL-4'
+    })
+
+    const csvContent = [
+      'Date,Time,Source,Extended,Discount,Cost,Credit,Title,Quantity,Unit,Sale/Order ID,ISBN,Barcode,Register',
+      '2026-05-01,2:28 PM,Shared Order,$12.50,$2.50,$8.00,$7.00,Book A,1,$12.50,SO-900,9780000000001,111,Drawer1',
+      '2026-05-01,2:28 PM,Shared Order,$12.50,$2.50,$8.00,$7.00,Book A,1,$12.50,SO-900,9780000000002,222,Drawer1'
+    ].join('\n') + '\n'
+
+    const { default: importSales } = await import('../../server/api/admin/sales/imports.post')
+
+    const result = await importSales({
+      headers: adminHeaders(),
+      body: {
+        sourcePeriod: '2026-Q2',
+        csvContent
+      }
+    }) as { summary: { total: number, accepted: number, duplicates: number }, batchId: string }
+
+    expect(result.summary.total).toBe(2)
+    expect(result.summary.accepted).toBe(2)
+    expect(result.summary.duplicates).toBe(0)
+
+    const saleRecords = await SaleRecord.find({ sourceBatchId: result.batchId }).sort({ sourceRowKey: 1 })
+    expect(saleRecords).toHaveLength(2)
+    expect(saleRecords[0].sourceRowKey.toString()).not.toBe(saleRecords[1].sourceRowKey.toString())
+    expect(saleRecords[0].saleOrderId).toBe('SO-900')
+    expect(saleRecords[1].saleOrderId).toBe('SO-900')
+  })
+
+  it('rejects verified non-vendor rows without reporting them as import errors', async () => {
+    await VerifiedNonVendorSource.create({
+      sourceName: 'Customer Credit',
+      normalizedSource: 'customer credit'
+    })
+
+    const csvContent = `${csvHeader}2026-05-01,10:15 AM,Customer Credit,$12.50,$2.50,$8.00,$7.00,Book A,1,$12.50,SO-777\n`
+
+    const { default: importSales } = await import('../../server/api/admin/sales/imports.post')
+    const { default: getBatch } = await import('../../server/api/admin/sales/[batchId].get')
+
+    const result = await importSales({
+      headers: adminHeaders(),
+      body: {
+        sourcePeriod: '2026-Q2',
+        csvContent
+      }
+    }) as {
+      batchId: string
+      summary: { total: number, accepted: number, rejected: number, nonVendorRejected: number }
+      errors: Array<{ code: string }>
+      nonVendorSources: string[]
+    }
+
+    expect(result.summary.total).toBe(1)
+    expect(result.summary.accepted).toBe(0)
+    expect(result.summary.rejected).toBe(1)
+    expect(result.summary.nonVendorRejected).toBe(1)
+    expect(result.errors).toHaveLength(0)
+    expect(result.nonVendorSources).toContain('Customer Credit')
+
+    const saleRecords = await SaleRecord.find({ sourceBatchId: result.batchId })
+    expect(saleRecords).toHaveLength(0)
+
+    const batchDetail = await getBatch({
+      headers: adminHeaders(),
+      params: { batchId: result.batchId }
+    }) as {
+      batch: {
+        summary: { rejected: number, nonVendorRejected: number }
+        errors: Array<{ code: string }>
+        nonVendorSources: string[]
+      }
+    }
+
+    expect(batchDetail.batch.summary.rejected).toBe(1)
+    expect(batchDetail.batch.summary.nonVendorRejected).toBe(1)
+    expect(batchDetail.batch.errors).toHaveLength(0)
+    expect(batchDetail.batch.nonVendorSources).toContain('Customer Credit')
   })
 })

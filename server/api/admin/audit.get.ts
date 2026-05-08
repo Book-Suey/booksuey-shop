@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { connectToDatabase } from '../../config/database'
 import { AuditEvent } from '../../models/AuditEvent'
 import { requireAdmin } from '../../utils/adminAuth'
+import { getActorDisplayNameMap } from '../../utils/displayName'
 
 const auditQuerySchema = z.object({
   action: z.union([z.string(), z.array(z.string())]).optional(),
@@ -77,6 +78,12 @@ export default defineEventHandler(async (event) => {
 
   const limit = parsedQuery.data.limit ?? 100
   const auditEvents = await AuditEvent.find(filters).sort({ createdAt: -1, _id: -1 }).limit(limit)
+  const actorDisplayNameMap = await getActorDisplayNameMap(
+    auditEvents.map((auditEvent: { actorId: string, actorRole: 'admin' | 'vendor' }) => ({
+      actorId: auditEvent.actorId,
+      actorRole: auditEvent.actorRole
+    }))
+  )
 
   return {
     auditEvents: auditEvents.map((auditEvent: {
@@ -92,6 +99,9 @@ export default defineEventHandler(async (event) => {
     }) => ({
       auditEventId: auditEvent.auditEventId,
       actorId: auditEvent.actorId,
+      actorDisplayName:
+        actorDisplayNameMap.get(`${auditEvent.actorRole}:${auditEvent.actorId}`)
+        || auditEvent.actorId,
       actorRole: auditEvent.actorRole,
       action: auditEvent.action,
       entityType: auditEvent.entityType,

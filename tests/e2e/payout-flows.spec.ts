@@ -42,26 +42,31 @@ test('admin payout queue page is reachable', async ({ page }) => {
   await page.goto('/admin/payout-requests')
 
   const url = page.url()
-  const isOnQueue = url.includes('/admin/payout-requests') && !url.includes('/admin/login')
-  const isOnAdminLogin = url.includes('/admin/login')
+  const isOnQueue = url.includes('/admin/payout-requests') && !url.includes('/login')
+  const isOnLogin = url.includes('/login')
 
   if (isOnQueue) {
-    await expect(page.getByRole('heading', { name: 'Payout queue' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Payout queue', exact: true })).toBeVisible()
     await expect(page.getByLabel('Status')).toBeVisible()
     await expect(page.getByLabel('From date')).toBeVisible()
     await expect(page.getByLabel('To date')).toBeVisible()
-  } else if (isOnAdminLogin) {
-    await expect(
-      page.getByRole('heading', { name: 'Sign in to Admin Console' })
-    ).toBeVisible()
+  } else if (isOnLogin) {
+    await expect(page.getByRole('heading', { name: 'Sign in to Book Suey' })).toBeVisible()
   }
 })
 
 test('admin payout review page navigation works when queue rows exist', async ({ page }) => {
   await page.goto('/admin/payout-requests')
 
-  if (!page.url().includes('/admin/login')) {
-    const reviewLinks = page.getByRole('link', { name: 'Review' })
+  if (!page.url().includes('/login')) {
+    const emptyState = page.getByRole('heading', { name: 'No payouts in queue' })
+
+    if ((await emptyState.count()) > 0) {
+      await expect(emptyState).toBeVisible()
+      return
+    }
+
+    const reviewLinks = page.getByRole('link', { name: /^Review$/ })
 
     if ((await reviewLinks.count()) > 0) {
       await reviewLinks.first().click()

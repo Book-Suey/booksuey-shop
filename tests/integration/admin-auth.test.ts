@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import { MongoMemoryServer } from 'mongodb-memory-server'
 import mongoose from 'mongoose'
 import { AdminAccount } from '../../server/models/AdminAccount'
-import { AuditEvent } from '../../server/models/AuditEvent'
 import { generateToken, hashPassword } from '../../server/utils/auth'
 
 let mongoServer: MongoMemoryServer
@@ -37,69 +36,14 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.resetModules()
   await AdminAccount.deleteMany({})
-  await AuditEvent.deleteMany({})
 })
 
 describe('Admin Authentication Endpoints', () => {
-  it('logs in an active admin account and returns admin-role token', async () => {
-    await AdminAccount.create({
-      adminId: 'admin_auth_1',
-      email: 'admin-auth@example.com',
-      passwordHash: await hashPassword('StrongPass123!'),
-      status: 'active'
-    })
-
-    const { default: adminLogin } = await import('../../server/api/admin/login.post')
-
-    const result = await adminLogin({
-      body: {
-        email: 'admin-auth@example.com',
-        password: 'StrongPass123!'
-      },
-      headers: {
-        'x-real-ip': '127.0.0.1'
-      }
-    }) as { token: string, admin: { adminId: string, email: string, status: string } }
-
-    expect(result.token).toBeDefined()
-    expect(result.admin.adminId).toBe('admin_auth_1')
-    expect(result.admin.email).toBe('admin-auth@example.com')
-    expect(result.admin.status).toBe('active')
-
-    const audit = await AuditEvent.findOne({
-      action: 'admin_login',
-      entityId: 'admin_auth_1'
-    })
-    expect(audit).toBeDefined()
-  })
-
-  it('rejects login for disabled admin account', async () => {
-    await AdminAccount.create({
-      adminId: 'admin_auth_2',
-      email: 'disabled-admin@example.com',
-      passwordHash: await hashPassword('StrongPass123!'),
-      status: 'disabled'
-    })
-
-    const { default: adminLogin } = await import('../../server/api/admin/login.post')
-
-    await expect(adminLogin({
-      body: {
-        email: 'disabled-admin@example.com',
-        password: 'StrongPass123!'
-      },
-      headers: {
-        'x-real-ip': '127.0.0.1'
-      }
-    })).rejects.toMatchObject({
-      statusCode: 403
-    })
-  })
-
   it('returns authenticated admin profile for valid admin token', async () => {
     await AdminAccount.create({
       adminId: 'admin_auth_3',
       email: 'me-admin@example.com',
+      displayName: 'Admin Auth Three',
       passwordHash: await hashPassword('StrongPass123!'),
       status: 'active'
     })
@@ -116,9 +60,10 @@ describe('Admin Authentication Endpoints', () => {
       headers: {
         authorization: `Bearer ${token}`
       }
-    }) as { admin: { adminId: string, email: string, status: string } }
+    }) as { admin: { adminId: string, displayName: string, email: string, status: string } }
 
     expect(result.admin.adminId).toBe('admin_auth_3')
+    expect(result.admin.displayName).toBe('Admin Auth Three')
     expect(result.admin.email).toBe('me-admin@example.com')
     expect(result.admin.status).toBe('active')
   })

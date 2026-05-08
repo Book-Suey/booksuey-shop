@@ -20,9 +20,11 @@ export interface ISalesImportBatch {
   totalRows: number
   acceptedRows: number
   rejectedRows: number
+  nonVendorRejectedRows: number
   duplicateRows: number
   errors: ISalesImportError[]
   unmappedSources: string[]
+  nonVendorSources: string[]
 }
 
 const SalesImportErrorSchema = new mongoose.Schema<ISalesImportError>(
@@ -47,9 +49,11 @@ const SalesImportBatchSchema = new mongoose.Schema<ISalesImportBatch>(
     totalRows: { type: Number, required: true },
     acceptedRows: { type: Number, required: true },
     rejectedRows: { type: Number, required: true },
+    nonVendorRejectedRows: { type: Number, required: true, default: 0 },
     duplicateRows: { type: Number, required: true },
     errors: { type: [SalesImportErrorSchema], default: [] },
-    unmappedSources: { type: [String], default: [] }
+    unmappedSources: { type: [String], default: [] },
+    nonVendorSources: { type: [String], default: [] }
   },
   {
     // `errors` is intentionally part of the import summary contract.

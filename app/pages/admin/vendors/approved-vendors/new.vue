@@ -35,7 +35,7 @@ async function submitNewApprovedVendor(): Promise<void> {
     )
 
     await navigateTo(
-      `/admin/approved-vendors/${response.approvedVendor.basilId}`
+      `/admin/vendors/approved-vendors/${response.approvedVendor.basilId}`
     )
   } catch (error: unknown) {
     const statusMessage = (error as { statusMessage?: string })?.statusMessage
@@ -126,7 +126,7 @@ async function submitNewApprovedVendor(): Promise<void> {
             {{ isSubmitting ? "Creating..." : "Create approved vendor" }}
           </button>
           <NuxtLink
-            to="/admin/approved-vendors"
+            to="/admin/vendors/approved-vendors"
             class="portal-button portal-button--secondary"
           >
             Cancel

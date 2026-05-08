@@ -22,7 +22,7 @@ async function handleLogout(): Promise<void> {
     >
       <template #left>
         <NuxtLink
-          to="/"
+          to="/vendor"
           class="app-brand"
         >
           <img
@@ -40,7 +40,7 @@ async function handleLogout(): Promise<void> {
       <template #right>
         <nav class="app-nav">
           <NuxtLink
-            to="/"
+            to="/vendor"
             class="app-nav__link"
           >Overview</NuxtLink>
           <NuxtLink
@@ -72,7 +72,23 @@ async function handleLogout(): Promise<void> {
     </UHeader>
 
     <UMain class="app-main">
-      <slot />
+      <div class="app-main__inner">
+        <slot />
+      </div>
     </UMain>
+
+    <UFooter class="app-footer">
+      <template #left>
+        <p class="app-footer__copy">
+          Book Suey Vendor Portal • © {{ new Date().getFullYear() }}
+        </p>
+      </template>
+
+      <template #right>
+        <p class="app-footer__copy app-footer__copy--muted">
+          Quarterly sales, balances, and payout history in one place.
+        </p>
+      </template>
+    </UFooter>
   </UApp>
 </template>

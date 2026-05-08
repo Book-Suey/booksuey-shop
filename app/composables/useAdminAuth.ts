@@ -1,11 +1,12 @@
 interface AdminProfile {
   adminId: string
+  displayName: string
   email: string
   status: 'active' | 'disabled'
   lastLoginAt?: string
 }
 
-interface AdminLoginResponse {
+interface AdminSessionPayload {
   token: string
   admin: AdminProfile
 }
@@ -52,7 +53,7 @@ export function useAdminAuth() {
     persistSession()
   }
 
-  function applySession(payload: AdminLoginResponse): void {
+  function applySession(payload: AdminSessionPayload): void {
     token.value = payload.token
     admin.value = payload.admin
     persistSession()
@@ -107,17 +108,6 @@ export function useAdminAuth() {
     }
   }
 
-  async function login(payload: { email: string, password: string }): Promise<AdminLoginResponse> {
-    const response = await $fetch<AdminLoginResponse>('/api/admin/login', {
-      method: 'POST',
-      body: payload
-    })
-
-    applySession(response)
-
-    return response
-  }
-
   async function logout(): Promise<void> {
     clearSession()
   }
@@ -129,7 +119,6 @@ export function useAdminAuth() {
     authHeaders,
     ensureInitialized,
     fetchMe,
-    login,
     logout,
     applySession,
     clearSession

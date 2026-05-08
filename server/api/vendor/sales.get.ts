@@ -74,6 +74,19 @@ export default defineEventHandler(async (event) => {
   }
 
   const sales = await SaleRecord.find(saleQuery).sort({ soldAt: -1, _id: -1 })
+  const batchIds = Array.from(new Set(sales.map((sale: { sourceBatchId: string }) => sale.sourceBatchId)))
+
+  const sourcePeriodsByBatchId = new Map<string, string>()
+  if (batchIds.length > 0) {
+    const batches = await SalesImportBatch.find(
+      { batchId: { $in: batchIds } },
+      { batchId: 1, sourcePeriod: 1, _id: 0 }
+    )
+
+    for (const batch of batches as Array<{ batchId: string, sourcePeriod: string }>) {
+      sourcePeriodsByBatchId.set(batch.batchId, batch.sourcePeriod)
+    }
+  }
 
   return {
     sales: sales.map((sale: {
@@ -91,6 +104,7 @@ export default defineEventHandler(async (event) => {
     }) => ({
       saleRecordId: String(sale._id),
       sourceBatchId: sale.sourceBatchId,
+      sourcePeriod: sourcePeriodsByBatchId.get(sale.sourceBatchId) || sale.sourceBatchId,
       soldAt: sale.soldAt,
       title: sale.title,
       quantity: sale.quantity,

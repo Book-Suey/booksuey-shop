@@ -49,3 +49,18 @@ SaleRecordSchema.index({ vendorId: 1, soldAt: -1 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const SaleRecord = mongoose.models.SaleRecord || mongoose.model<ISaleRecord>('SaleRecord', SaleRecordSchema) as any
+
+let saleRecordIndexesReady: Promise<void> | null = null
+
+export async function ensureSaleRecordIndexes(): Promise<void> {
+  if (!saleRecordIndexesReady) {
+    saleRecordIndexesReady = (async () => {
+      await SaleRecord.syncIndexes()
+    })().catch((error: unknown) => {
+      saleRecordIndexesReady = null
+      throw error
+    })
+  }
+
+  await saleRecordIndexesReady
+}

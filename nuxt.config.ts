@@ -17,6 +17,10 @@ export default defineNuxtConfig({
     bcryptCostFactor: parseInt(process.env.BCRYPT_COST_FACTOR || '12', 10)
   },
 
+  routeRules: {
+    '/admin/login': { redirect: '/login' }
+  },
+
   compatibilityDate: '2025-01-15',
 
   nitro: {

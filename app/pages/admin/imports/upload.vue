@@ -32,6 +32,10 @@ const form = reactive({
   file: null as File | null
 })
 
+function toBatchDetailPath(batchId: string): string {
+  return `/admin/imports/${encodeURIComponent(batchId)}`
+}
+
 function updateFileSelection(event: Event): void {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0] ?? null
@@ -168,9 +172,9 @@ async function submitImport(): Promise<void> {
     >
       <div class="vendor-panel__title">
         <h2>Import summary</h2>
-        <NuxtLink :to="`/admin/imports/${uploadedBatch.batchId}`">
+        <a :href="toBatchDetailPath(uploadedBatch.batchId)">
           Open batch detail
-        </NuxtLink>
+        </a>
       </div>
 
       <section class="import-detail-grid">

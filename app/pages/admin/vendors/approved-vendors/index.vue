@@ -10,15 +10,29 @@ interface ApprovedVendorRecord {
   lastName: string
   email: string
   phone?: string
+  isLinked: boolean
+  linkedVendorId: string | null
 }
 
 const auth = useAdminAuth()
 const search = ref('')
 const showCreateModal = ref(false)
+const showEditModal = ref(false)
 const isCreating = ref(false)
+const isEditing = ref(false)
 const createError = ref<string | null>(null)
+const editError = ref<string | null>(null)
+const editTargetId = ref<string | null>(null)
 
 const createForm = reactive({
+  basilId: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: ''
+})
+
+const editForm = reactive({
   basilId: '',
   firstName: '',
   lastName: '',
@@ -68,6 +82,7 @@ const columns = [
   { key: 'name', label: 'Name' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
+  { key: 'linked', label: 'Account Status' },
   { key: 'actions', label: 'Actions' }
 ]
 
@@ -82,6 +97,25 @@ function closeCreateModal(): void {
   }
 
   showCreateModal.value = false
+}
+
+function openEditModal(row: ApprovedVendorRecord): void {
+  editError.value = null
+  editTargetId.value = row.basilId
+  editForm.basilId = row.basilId
+  editForm.firstName = row.firstName
+  editForm.lastName = row.lastName
+  editForm.email = row.email
+  editForm.phone = row.phone || ''
+  showEditModal.value = true
+}
+
+function closeEditModal(): void {
+  if (isEditing.value) {
+    return
+  }
+
+  showEditModal.value = false
 }
 
 async function submitNewApprovedVendor(): Promise<void> {
@@ -118,6 +152,42 @@ async function submitNewApprovedVendor(): Promise<void> {
       = statusMessage || 'Unable to create approved vendor record.'
   } finally {
     isCreating.value = false
+  }
+}
+
+async function submitApprovedVendorEdit(): Promise<void> {
+  if (!editTargetId.value) {
+    return
+  }
+
+  editError.value = null
+  isEditing.value = true
+
+  try {
+    await auth.ensureInitialized()
+
+    await $fetch(`/api/admin/approved-vendors/${editTargetId.value}`, {
+      method: 'PATCH',
+      headers: auth.authHeaders(),
+      body: {
+        basilId: editForm.basilId.trim(),
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim(),
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim() || undefined
+      }
+    })
+
+    showEditModal.value = false
+    editTargetId.value = null
+    await refresh()
+  } catch (requestError: unknown) {
+    const statusMessage = (requestError as { statusMessage?: string })
+      ?.statusMessage
+    editError.value
+      = statusMessage || 'Unable to update approved vendor record.'
+  } finally {
+    isEditing.value = false
   }
 }
 </script>
@@ -196,10 +266,24 @@ async function submitNewApprovedVendor(): Promise<void> {
         <template #cell:phone="{ row }">
           {{ (row.phone as string) || "—" }}
         </template>
+        <template #cell:linked="{ row }">
+          <AppStatusBadge
+            :status="
+              (row as ApprovedVendorRecord).isLinked ? 'active' : 'inactive'
+            "
+            :label="
+              (row as ApprovedVendorRecord).isLinked ? 'Linked' : 'Not linked'
+            "
+          />
+        </template>
         <template #cell:actions="{ row }">
-          <NuxtLink :to="`/admin/approved-vendors/${row.basilId as string}`">
+          <a
+            href="#"
+            class="auth-inline-link"
+            @click.prevent="openEditModal(row as ApprovedVendorRecord)"
+          >
             Edit
-          </NuxtLink>
+          </a>
         </template>
       </AppDataTable>
     </article>
@@ -284,6 +368,92 @@ async function submitNewApprovedVendor(): Promise<void> {
               :disabled="isCreating"
             >
               {{ isCreating ? "Creating..." : "Create approved vendor" }}
+            </button>
+          </div>
+        </form>
+      </article>
+    </div>
+
+    <div
+      v-if="showEditModal"
+      class="modal-backdrop"
+      @click.self="closeEditModal"
+    >
+      <article class="modal-panel">
+        <div class="vendor-panel__title">
+          <h2>Edit approved vendor</h2>
+          <button
+            type="button"
+            class="portal-button portal-button--secondary"
+            :disabled="isEditing"
+            @click="closeEditModal"
+          >
+            Close
+          </button>
+        </div>
+
+        <form
+          class="auth-form"
+          @submit.prevent="submitApprovedVendorEdit"
+        >
+          <label>
+            <span>Basil ID</span>
+            <input
+              v-model="editForm.basilId"
+              required
+              type="text"
+            >
+          </label>
+
+          <label>
+            <span>First name</span>
+            <input
+              v-model="editForm.firstName"
+              required
+              type="text"
+            >
+          </label>
+
+          <label>
+            <span>Last name</span>
+            <input
+              v-model="editForm.lastName"
+              required
+              type="text"
+            >
+          </label>
+
+          <label>
+            <span>Email</span>
+            <input
+              v-model="editForm.email"
+              required
+              type="email"
+            >
+          </label>
+
+          <label>
+            <span>Phone (optional)</span>
+            <input
+              v-model="editForm.phone"
+              type="text"
+            >
+          </label>
+
+          <p
+            v-if="editError"
+            class="auth-error"
+          >
+            {{ editError }}
+          </p>
+
+          <div class="vendor-actions">
+            <button
+              type="submit"
+              class="portal-button portal-button--primary"
+              :disabled="isEditing"
+            >
+              {{ isEditing ? "Saving..." : "Save changes" }}
             </button>
           </div>
         </form>

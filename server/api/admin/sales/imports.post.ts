@@ -6,9 +6,10 @@ import { requireAdmin } from '../../../utils/adminAuth'
 import { ApprovedVendor } from '../../../models/ApprovedVendor'
 import { Vendor } from '../../../models/Vendor'
 import { SalesImportBatch } from '../../../models/SalesImportBatch'
-import { SaleRecord } from '../../../models/SaleRecord'
+import { ensureSaleRecordIndexes, SaleRecord } from '../../../models/SaleRecord'
 import { LedgerEntry } from '../../../models/LedgerEntry'
 import { AuditEvent } from '../../../models/AuditEvent'
+import { VerifiedNonVendorSource } from '../../../models/VerifiedNonVendorSource'
 import { recomputeBalanceSnapshotsForVendors } from '../../../utils/balance'
 import {
   computeLedgerAmount,
@@ -64,6 +65,7 @@ async function readImportRequest(event: H3Event): Promise<{ sourcePeriod: string
 export default defineEventHandler(async (event) => {
   const adminIdentity = await requireAdmin(event)
   await connectToDatabase()
+  await ensureSaleRecordIndexes()
 
   const { sourcePeriod, csvContent } = await readImportRequest(event)
   const checksum = crypto.createHash('sha256').update(csvContent).digest('hex')
@@ -96,6 +98,11 @@ export default defineEventHandler(async (event) => {
     }
   })
 
+  const verifiedNonVendorSources = await VerifiedNonVendorSource.find({}, { normalizedSource: 1, _id: 0 })
+  const nonVendorSourceSet = new Set(
+    verifiedNonVendorSources.map((record: { normalizedSource: string }) => record.normalizedSource)
+  )
+
   const existingRows = await SaleRecord.find(
     { sourceRowKey: { $in: parsedCsv.rows.map(row => row.sourceRowKey) } },
     { sourceRowKey: 1 }
@@ -105,6 +112,8 @@ export default defineEventHandler(async (event) => {
   const batchId = `batch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
   const rowErrors = [...parsedCsv.rowErrors]
   const unmappedSources = new Set<string>()
+  const nonVendorSources = new Set<string>()
+  let nonVendorRejectedRows = 0
   let duplicateRows = parsedCsv.duplicateRows
 
   const acceptedRows = [] as Array<{
@@ -130,6 +139,13 @@ export default defineEventHandler(async (event) => {
     }
 
     const normalizedSource = normalizeImportSource(row.source)
+
+    if (nonVendorSourceSet.has(normalizedSource)) {
+      nonVendorRejectedRows += 1
+      nonVendorSources.add(row.source)
+      continue
+    }
+
     const approvedVendorId = sourceToApprovedVendor.get(normalizedSource)
     const vendorId = approvedVendorId ? approvedVendorToVendor.get(approvedVendorId) : undefined
 
@@ -210,10 +226,12 @@ export default defineEventHandler(async (event) => {
     idempotencyKey,
     totalRows: parsedCsv.totalRows,
     acceptedRows: acceptedRows.length,
-    rejectedRows: rowErrors.length,
+    rejectedRows: rowErrors.length + nonVendorRejectedRows,
+    nonVendorRejectedRows,
     duplicateRows,
     errors: rowErrors,
-    unmappedSources: Array.from(unmappedSources)
+    unmappedSources: Array.from(unmappedSources),
+    nonVendorSources: Array.from(nonVendorSources)
   })
 
   await AuditEvent.create({
@@ -226,7 +244,8 @@ export default defineEventHandler(async (event) => {
     after: {
       totalRows: parsedCsv.totalRows,
       accepted: acceptedRows.length,
-      rejected: rowErrors.length,
+      rejected: rowErrors.length + nonVendorRejectedRows,
+      nonVendorRejected: nonVendorRejectedRows,
       duplicates: duplicateRows
     },
     createdAt: new Date()
@@ -237,10 +256,12 @@ export default defineEventHandler(async (event) => {
     summary: {
       total: parsedCsv.totalRows,
       accepted: acceptedRows.length,
-      rejected: rowErrors.length,
+      rejected: rowErrors.length + nonVendorRejectedRows,
+      nonVendorRejected: nonVendorRejectedRows,
       duplicates: duplicateRows
     },
     errors: rowErrors,
-    unmappedSources: Array.from(unmappedSources)
+    unmappedSources: Array.from(unmappedSources),
+    nonVendorSources: Array.from(nonVendorSources)
   }
 })

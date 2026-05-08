@@ -43,7 +43,7 @@ async function handleLogout(): Promise<void> {
         <nav class="app-nav">
           <template v-if="isAuthenticated">
             <NuxtLink
-              to="/"
+              to="/vendor"
               class="app-nav__link"
             >Overview</NuxtLink>
             <NuxtLink
@@ -87,10 +87,10 @@ async function handleLogout(): Promise<void> {
     </UHeader>
 
     <UMain class="app-main">
-      <slot />
+      <div class="app-main__inner">
+        <slot />
+      </div>
     </UMain>
-
-    <USeparator class="app-separator" />
 
     <UFooter class="app-footer">
       <template #left>

@@ -21,6 +21,7 @@ interface AdminImportRecord {
     total: number
     accepted: number
     rejected: number
+    nonVendorRejected: number
     duplicates: number
   }
   errors: AdminImportError[]
@@ -33,6 +34,7 @@ interface ImportUploadResponse {
     total: number
     accepted: number
     rejected: number
+    nonVendorRejected: number
     duplicates: number
   }
 }
@@ -92,6 +94,10 @@ function formatDate(value: string): string {
     hour: 'numeric',
     minute: '2-digit'
   })
+}
+
+function toBatchDetailPath(batchId: string): string {
+  return `/admin/imports/${encodeURIComponent(batchId)}`
 }
 
 const { data, pending, error, refresh } = await useAsyncData(
@@ -379,12 +385,11 @@ async function submitSalesDetailUpload(): Promise<void> {
         <template #cell:summary="{ row }">
           {{ row.summary.accepted as number }} accepted /
           {{ row.summary.rejected as number }} rejected /
+          {{ row.summary.nonVendorRejected as number }} non-vendor /
           {{ row.summary.duplicates as number }} duplicate
         </template>
         <template #cell:actions="{ row }">
-          <NuxtLink :to="`/admin/imports/${row.batchId as string}`">
-            Review batch
-          </NuxtLink>
+          <a :href="toBatchDetailPath(row.batchId as string)"> Review batch </a>
         </template>
       </AppDataTable>
     </article>
@@ -456,7 +461,7 @@ async function submitSalesDetailUpload(): Promise<void> {
             class="auth-success"
           >
             Report uploaded.
-            <NuxtLink :to="`/admin/imports/${uploadSuccess.batchId}`">Review batch</NuxtLink>
+            <a :href="toBatchDetailPath(uploadSuccess.batchId)">Review batch</a>
           </p>
 
           <div class="vendor-actions">

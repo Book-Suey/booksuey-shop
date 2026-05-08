@@ -1,6 +1,7 @@
 import { connectToDatabase } from '../../config/database'
 import { AdminAccount } from '../../models/AdminAccount'
 import { requireAdmin } from '../../utils/adminAuth'
+import { formatAdminDisplayName } from '../../utils/displayName'
 
 export default defineEventHandler(async (event) => {
   const adminIdentity = await requireAdmin(event)
@@ -21,6 +22,7 @@ export default defineEventHandler(async (event) => {
   return {
     admin: {
       adminId: admin.adminId,
+      displayName: formatAdminDisplayName(admin),
       email: admin.email,
       status: admin.status,
       lastLoginAt: admin.lastLoginAt,

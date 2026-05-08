@@ -204,7 +204,7 @@ async function handleDisbursement(): Promise<void> {
         </NuxtLink>
         <NuxtLink
           v-if="data.payoutRequest.status === 'failed'"
-          to="/admin/payout-failures"
+          to="/admin/payout-requests/payout-failures"
           class="portal-button portal-button--secondary"
         >
           Open failure board

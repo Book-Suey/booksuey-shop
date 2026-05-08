@@ -1,39 +1,39 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "guest-only",
-});
+  middleware: 'guest-only'
+})
 
-const auth = useUnifiedAuth();
-const isSubmitting = ref(false);
-const formError = ref<string | null>(null);
+const auth = useUnifiedAuth()
+const isSubmitting = ref(false)
+const formError = ref<string | null>(null)
 
 const form = reactive({
-  email: "",
-  password: "",
-});
+  email: '',
+  password: ''
+})
 
 async function submitLogin(): Promise<void> {
-  formError.value = null;
-  isSubmitting.value = true;
+  formError.value = null
+  isSubmitting.value = true
 
   try {
     const response = await auth.login({
       email: form.email,
-      password: form.password,
-    });
+      password: form.password
+    })
 
-    if (response.role === "admin") {
-      await navigateTo("/admin");
-      return;
+    if (response.role === 'admin') {
+      await navigateTo('/admin')
+      return
     }
 
-    await navigateTo("/");
+    await navigateTo('/vendor')
   } catch (error: unknown) {
-    const statusMessage = (error as { statusMessage?: string })?.statusMessage;
-    formError.value =
-      statusMessage || "Unable to sign in with those credentials.";
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage
+    formError.value
+      = statusMessage || 'Unable to sign in with those credentials.'
   } finally {
-    isSubmitting.value = false;
+    isSubmitting.value = false
   }
 }
 </script>
@@ -41,13 +41,20 @@ async function submitLogin(): Promise<void> {
 <template>
   <section class="auth-page">
     <article class="auth-card">
-      <p class="auth-kicker">Vendor access</p>
-      <h1 class="auth-title">Sign in to Book Suey</h1>
+      <p class="auth-kicker">
+        Vendor access
+      </p>
+      <h1 class="auth-title">
+        Sign in to Book Suey
+      </h1>
       <p class="auth-copy">
         Access your sales history, ledger activity, and payout requests.
       </p>
 
-      <form class="auth-form" @submit.prevent="submitLogin">
+      <form
+        class="auth-form"
+        @submit.prevent="submitLogin"
+      >
         <label>
           <span>Email</span>
           <input
@@ -56,7 +63,7 @@ async function submitLogin(): Promise<void> {
             required
             autocomplete="email"
             placeholder="name@example.com"
-          />
+          >
         </label>
 
         <label>
@@ -67,14 +74,20 @@ async function submitLogin(): Promise<void> {
             required
             autocomplete="current-password"
             placeholder="••••••••"
-          />
+          >
         </label>
 
-        <NuxtLink to="/forgot-password" class="auth-inline-link">
+        <NuxtLink
+          to="/forgot-password"
+          class="auth-inline-link"
+        >
           Forgot password?
         </NuxtLink>
 
-        <p v-if="formError" class="auth-error">
+        <p
+          v-if="formError"
+          class="auth-error"
+        >
           {{ formError }}
         </p>
 

@@ -1,6 +1,7 @@
 import { connectToDatabase } from '../../../config/database'
 import { requireAdmin } from '../../../utils/adminAuth'
 import { SalesImportBatch } from '../../../models/SalesImportBatch'
+import { getAdminDisplayNameMap } from '../../../utils/displayName'
 
 export default defineEventHandler(async (event) => {
   await requireAdmin(event)
@@ -22,11 +23,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const uploadedByMap = await getAdminDisplayNameMap([batch.uploadedBy])
+
   return {
     batch: {
       batchId: batch.batchId,
       sourcePeriod: batch.sourcePeriod,
-      uploadedBy: batch.uploadedBy,
+      uploadedBy: uploadedByMap.get(batch.uploadedBy) || batch.uploadedBy,
       uploadedAt: batch.uploadedAt,
       status: batch.status,
       checksum: batch.checksum,
@@ -34,10 +37,12 @@ export default defineEventHandler(async (event) => {
         total: batch.totalRows,
         accepted: batch.acceptedRows,
         rejected: batch.rejectedRows,
+        nonVendorRejected: batch.nonVendorRejectedRows,
         duplicates: batch.duplicateRows
       },
       errors: batch.errors,
-      unmappedSources: batch.unmappedSources
+      unmappedSources: batch.unmappedSources,
+      nonVendorSources: batch.nonVendorSources
     }
   }
 })

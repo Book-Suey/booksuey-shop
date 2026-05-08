@@ -1,7 +1,9 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: 'admin-auth',
-  layout: 'admin'
+  layout: 'admin',
+  pageTransition: false,
+  layoutTransition: false
 })
 
 interface BatchError {
@@ -22,14 +24,34 @@ interface BatchDetail {
     total: number
     accepted: number
     rejected: number
+    nonVendorRejected: number
     duplicates: number
   }
   errors: BatchError[]
   unmappedSources: string[]
+  nonVendorSources: string[]
 }
 
 const auth = useAdminAuth()
 const route = useRoute()
+
+const batchId = computed(() => {
+  const rawValue = Array.isArray(route.params.batchId)
+    ? route.params.batchId[0]
+    : route.params.batchId
+
+  const value = String(rawValue || '')
+
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+})
+
+const batchAuditPath = computed(() => {
+  return `/admin/audit?entityType=SalesImportBatch&entityId=${encodeURIComponent(batchId.value)}`
+})
 
 function formatDate(value: string): string {
   const parsed = new Date(value)
@@ -47,13 +69,13 @@ function formatDate(value: string): string {
   })
 }
 
-const { data, pending, error, refresh } = await useAsyncData(
-  () => `admin-import-batch-${route.params.batchId as string}`,
+const { data, pending, error, refresh } = useAsyncData(
+  () => `admin-import-batch-${batchId.value}`,
   async () => {
     await auth.ensureInitialized()
 
     return await $fetch<{ batch: BatchDetail }>(
-      `/api/admin/sales/${route.params.batchId as string}`,
+      `/api/admin/sales/${encodeURIComponent(batchId.value)}`,
       {
         method: 'GET',
         headers: auth.authHeaders()
@@ -74,14 +96,106 @@ const { data, pending, error, refresh } = await useAsyncData(
           total: 0,
           accepted: 0,
           rejected: 0,
+          nonVendorRejected: 0,
           duplicates: 0
         },
         errors: [] as BatchError[],
-        unmappedSources: [] as string[]
+        unmappedSources: [] as string[],
+        nonVendorSources: [] as string[]
       }
     })
   }
 )
+
+const outcomeColumns = [
+  { key: 'metric', label: 'Metric' },
+  { key: 'value', label: 'Value' },
+  { key: 'notes', label: 'Notes' }
+]
+
+const errorColumns = [
+  { key: 'reason', label: 'Reason' },
+  { key: 'hint', label: 'Hint' },
+  { key: 'count', label: 'Count' }
+]
+
+const errorSummaryRows = computed(() => {
+  const summaryByReasonHint = new Map<
+    string,
+    { reason: string, hint: string, count: number }
+  >()
+
+  for (const batchError of data.value.batch.errors) {
+    const mapKey = `${batchError.reason}|||${batchError.hint}`
+    const current = summaryByReasonHint.get(mapKey)
+
+    if (current) {
+      current.count += 1
+      continue
+    }
+
+    summaryByReasonHint.set(mapKey, {
+      reason: batchError.reason,
+      hint: batchError.hint,
+      count: 1
+    })
+  }
+
+  return Array.from(summaryByReasonHint.values()).sort((left, right) => {
+    if (right.count !== left.count) {
+      return right.count - left.count
+    }
+
+    return left.reason.localeCompare(right.reason)
+  })
+})
+
+const outcomeRows = computed(() => {
+  const batch = data.value.batch
+
+  return [
+    {
+      metric: 'Accepted rows',
+      value: String(batch.summary.accepted),
+      notes:
+        batch.summary.accepted > 0
+          ? 'Imported into ledger'
+          : 'No accepted rows'
+    },
+    {
+      metric: 'Rejected rows',
+      value: String(batch.summary.rejected),
+      notes:
+        batch.summary.rejected > 0
+          ? 'Includes errors and verified non-vendor rows'
+          : 'No rejected rows'
+    },
+    {
+      metric: 'Verified non-vendor rows',
+      value: String(batch.summary.nonVendorRejected),
+      notes:
+        batch.summary.nonVendorRejected > 0
+          ? 'Intentionally rejected'
+          : 'No verified non-vendor rows'
+    },
+    {
+      metric: 'Duplicates',
+      value: String(batch.summary.duplicates),
+      notes:
+        batch.summary.duplicates > 0
+          ? 'Skipped as duplicates'
+          : 'No duplicates'
+    },
+    {
+      metric: 'Unmapped sources',
+      value: String(batch.unmappedSources.length),
+      notes:
+        batch.unmappedSources.length > 0
+          ? 'Needs source mapping'
+          : 'Fully mapped'
+    }
+  ]
+})
 </script>
 
 <template>
@@ -91,11 +205,11 @@ const { data, pending, error, refresh } = await useAsyncData(
         Admin sales imports
       </p>
       <h1 class="auth-title">
-        Batch {{ route.params.batchId }}
+        Batch {{ batchId }}
       </h1>
       <p class="auth-copy">
-        Inspect import metadata, row-level errors, and unmapped sources for this
-        batch.
+        Inspect import metadata, row-level errors, and verified non-vendor
+        rejections for this batch.
       </p>
 
       <div class="vendor-actions">
@@ -106,7 +220,7 @@ const { data, pending, error, refresh } = await useAsyncData(
           Back to import history
         </NuxtLink>
         <NuxtLink
-          :to="`/admin/audit?entityType=SalesImportBatch&entityId=${route.params.batchId as string}`"
+          :to="batchAuditPath"
           class="portal-button portal-button--secondary"
         >
           View batch audit events
@@ -211,7 +325,26 @@ const { data, pending, error, refresh } = await useAsyncData(
             {{ data.batch.summary.duplicates }}
           </p>
         </article>
+
+        <article class="admin-card">
+          <p class="admin-card__label">
+            Non-vendor rejected
+          </p>
+          <p class="admin-card__value">
+            {{ data.batch.summary.nonVendorRejected }}
+          </p>
+        </article>
       </section>
+
+      <article class="vendor-panel">
+        <h2>Batch outcomes</h2>
+
+        <AppDataTable
+          :columns="outcomeColumns"
+          :rows="outcomeRows"
+          :row-key="(row) => row.metric as string"
+        />
+      </article>
 
       <article class="vendor-panel stack-grid">
         <div>
@@ -222,34 +355,42 @@ const { data, pending, error, refresh } = await useAsyncData(
         </div>
 
         <div>
-          <h2>Rejected rows</h2>
+          <h2>Rejected error summary</h2>
 
           <AppEmptyState
             v-if="data.batch.errors.length === 0"
-            title="No row errors"
+            title="No errors"
             description="This batch did not record any row-level validation issues."
           />
 
-          <div
+          <AppDataTable
             v-else
-            class="detail-list"
+            :columns="errorColumns"
+            :rows="errorSummaryRows"
+            :row-key="(row) => `${row.reason}-${row.hint}`"
+          />
+        </div>
+
+        <div>
+          <h2>Verified non-vendor sources</h2>
+
+          <AppEmptyState
+            v-if="data.batch.nonVendorSources.length === 0"
+            title="No verified non-vendor rows"
+            description="No rows matched the verified non-vendor source list for this batch."
+          />
+
+          <ul
+            v-else
+            class="compact-list"
           >
-            <article
-              v-for="rowError in data.batch.errors"
-              :key="`${rowError.code}-${rowError.rowNumber}-${rowError.reason}`"
-              class="detail-list__row"
+            <li
+              v-for="source in data.batch.nonVendorSources"
+              :key="source"
             >
-              <span class="detail-list__eyebrow">
-                {{ rowError.code }} • row {{ rowError.rowNumber }}
-              </span>
-              <p class="detail-list__title">
-                {{ rowError.reason }}
-              </p>
-              <p class="detail-list__copy">
-                {{ rowError.hint }}
-              </p>
-            </article>
-          </div>
+              {{ source }}
+            </li>
+          </ul>
         </div>
 
         <div>

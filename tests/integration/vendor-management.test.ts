@@ -3,6 +3,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server'
 import mongoose from 'mongoose'
 import { Vendor } from '../../server/models/Vendor'
 import { ApprovedVendor } from '../../server/models/ApprovedVendor'
+import { VerifiedNonVendorSource } from '../../server/models/VerifiedNonVendorSource'
 import { AuditEvent } from '../../server/models/AuditEvent'
 import { hashPassword, generateToken } from '../../server/utils/auth'
 
@@ -41,6 +42,7 @@ beforeEach(async () => {
   vi.resetModules()
   await Vendor.deleteMany({})
   await ApprovedVendor.deleteMany({})
+  await VerifiedNonVendorSource.deleteMany({})
   await AuditEvent.deleteMany({})
 })
 
@@ -305,5 +307,60 @@ describe('Admin Vendor Management Endpoints', () => {
     expect(filtered.vendors).toHaveLength(1)
     expect(filtered.vendors[0].vendorId).toBe('vendor_list_inactive')
     expect(filtered.vendors[0].status).toBe('inactive')
+  })
+
+  it('creates, updates, lists, and deletes verified non-vendor sources', async () => {
+    const { default: createNonVendorSource } = await import('../../server/api/admin/non-vendor-sources/index.post')
+    const { default: patchNonVendorSource } = await import('../../server/api/admin/non-vendor-sources/[normalizedSource].patch')
+    const { default: deleteNonVendorSource } = await import('../../server/api/admin/non-vendor-sources/[normalizedSource].delete')
+    const { default: listNonVendorSources } = await import('../../server/api/admin/non-vendor-sources/index.get')
+
+    const created = await createNonVendorSource({
+      headers: adminHeaders(),
+      body: {
+        sourceName: 'Customer Credit'
+      }
+    }) as { nonVendorSource: { sourceName: string, normalizedSource: string } }
+
+    expect(created.nonVendorSource.sourceName).toBe('Customer Credit')
+    expect(created.nonVendorSource.normalizedSource).toBe('customer credit')
+
+    await expect(createNonVendorSource({
+      headers: adminHeaders(),
+      body: {
+        sourceName: ' customer   credit '
+      }
+    })).rejects.toMatchObject({
+      statusCode: 409
+    })
+
+    const updated = await patchNonVendorSource({
+      headers: adminHeaders(),
+      params: { normalizedSource: 'customer credit' },
+      body: {
+        sourceName: 'Publisher House'
+      }
+    }) as { nonVendorSource: { sourceName: string, normalizedSource: string } }
+
+    expect(updated.nonVendorSource.sourceName).toBe('Publisher House')
+    expect(updated.nonVendorSource.normalizedSource).toBe('publisher house')
+
+    const listed = await listNonVendorSources({
+      headers: adminHeaders()
+    }) as { nonVendorSources: Array<{ normalizedSource: string }> }
+
+    expect(listed.nonVendorSources).toHaveLength(1)
+    expect(listed.nonVendorSources[0].normalizedSource).toBe('publisher house')
+
+    await deleteNonVendorSource({
+      headers: adminHeaders(),
+      params: { normalizedSource: 'publisher%20house' }
+    })
+
+    const afterDelete = await listNonVendorSources({
+      headers: adminHeaders()
+    }) as { nonVendorSources: unknown[] }
+
+    expect(afterDelete.nonVendorSources).toHaveLength(0)
   })
 })

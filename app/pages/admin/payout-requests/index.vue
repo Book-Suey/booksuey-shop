@@ -148,7 +148,7 @@ const metrics = computed(() => {
 
       <div class="vendor-actions">
         <NuxtLink
-          to="/admin/payout-failures"
+          to="/admin/payout-requests/payout-failures"
           class="portal-button portal-button--secondary"
         >
           Review payout failures
@@ -263,45 +263,34 @@ const metrics = computed(() => {
         description="When vendors request payouts, they will appear here for review."
       />
 
-      <div
+      <AppDataTable
         v-else
-        class="table-shell"
+        :columns="columns"
+        :rows="data.payoutRequests"
+        :row-key="(row) => row.payoutRequestId"
+        :stack-on-mobile="false"
       >
-        <table>
-          <thead>
-            <tr>
-              <th
-                v-for="col in columns"
-                :key="col.key"
-              >
-                {{ col.label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="payout in data.payoutRequests"
-              :key="payout.payoutRequestId"
-            >
-              <td>{{ payout.payoutRequestId }}</td>
-              <td>{{ payout.vendorId }}</td>
-              <td>{{ formatCurrency(payout.amount) }}</td>
-              <td>
-                <AppStatusBadge :status="payout.status" />
-              </td>
-              <td>{{ formatDate(payout.requestedAt) }}</td>
-              <td>
-                <NuxtLink
-                  :to="`/admin/payout-requests/${payout.payoutRequestId}`"
-                  class="portal-button portal-button--secondary"
-                >
-                  Review
-                </NuxtLink>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <template #cell:amount="{ row }">
+          {{ formatCurrency(row.amount as string) }}
+        </template>
+
+        <template #cell:status="{ row }">
+          <AppStatusBadge :status="row.status as string" />
+        </template>
+
+        <template #cell:requestedAt="{ row }">
+          {{ formatDate(row.requestedAt as string) }}
+        </template>
+
+        <template #cell:actions="{ row }">
+          <NuxtLink
+            :to="`/admin/payout-requests/${row.payoutRequestId as string}`"
+            class="portal-button portal-button--secondary"
+          >
+            Review
+          </NuxtLink>
+        </template>
+      </AppDataTable>
     </article>
   </section>
 </template>

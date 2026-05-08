@@ -68,32 +68,6 @@ test('vendor login supports keyboard focus navigation', async ({ page }) => {
   expect(await hasVisibleFocusIndicator(page)).toBeTruthy()
 })
 
-test('admin login supports keyboard focus navigation', async ({ page }) => {
-  await page.goto('/admin/login')
-
-  await expect(
-    page.getByRole('heading', { name: 'Sign in to Admin Console' })
-  ).toBeVisible()
-
-  await page.locator('body').click()
-
-  const emailField = page.getByLabel('Email')
-  const passwordField = page.getByLabel('Password')
-  const signInButton = page.getByRole('button', { name: 'Sign in' })
-
-  await tabUntilLocatorFocused(page, emailField)
-  await expect(emailField).toBeFocused()
-  expect(await hasVisibleFocusIndicator(page)).toBeTruthy()
-
-  await tabUntilLocatorFocused(page, passwordField)
-  await expect(passwordField).toBeFocused()
-  expect(await hasVisibleFocusIndicator(page)).toBeTruthy()
-
-  await tabUntilLocatorFocused(page, signInButton)
-  await expect(signInButton).toBeFocused()
-  expect(await hasVisibleFocusIndicator(page)).toBeTruthy()
-})
-
 test('auth pages render without horizontal overflow on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
 
@@ -124,10 +98,8 @@ test('major protected routes remain responsive on mobile and desktop', async ({ 
 test('admin audit route exposes landmarks and labeled filters when authenticated', async ({ page }) => {
   await page.goto('/admin/audit')
 
-  if (page.url().includes('/admin/login')) {
-    await expect(
-      page.getByRole('heading', { name: 'Sign in to Admin Console' })
-    ).toBeVisible()
+  if (page.url().includes('/login')) {
+    await expect(page.getByRole('heading', { name: 'Sign in to Book Suey' })).toBeVisible()
     return
   }
 
@@ -137,23 +109,27 @@ test('admin audit route exposes landmarks and labeled filters when authenticated
   await expect(page.getByLabel('Entity type')).toBeVisible()
   await expect(page.getByLabel('Entity ID')).toBeVisible()
   await expect(page.getByLabel('Actor role')).toBeVisible()
-  await expect(page.getByLabel('From')).toBeVisible()
-  await expect(page.getByLabel('To')).toBeVisible()
+  await expect(page.getByLabel('From', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('To', { exact: true })).toBeVisible()
 })
 
 test('admin payout detail exposes accessible action controls when queue entries exist', async ({ page }) => {
   await page.goto('/admin/payout-requests')
 
-  if (page.url().includes('/admin/login')) {
-    await expect(
-      page.getByRole('heading', { name: 'Sign in to Admin Console' })
-    ).toBeVisible()
+  if (page.url().includes('/login')) {
+    await expect(page.getByRole('heading', { name: 'Sign in to Book Suey' })).toBeVisible()
     return
   }
 
-  const reviewLinks = page.getByRole('link', { name: 'Review' })
+  const emptyState = page.getByRole('heading', { name: 'No payouts in queue' })
+  if ((await emptyState.count()) > 0) {
+    await expect(page.getByRole('heading', { name: 'Payout queue', exact: true })).toBeVisible()
+    return
+  }
+
+  const reviewLinks = page.getByRole('link', { name: /^Review$/ })
   if ((await reviewLinks.count()) === 0) {
-    await expect(page.getByRole('heading', { name: 'Payout queue' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Payout queue', exact: true })).toBeVisible()
     return
   }
 

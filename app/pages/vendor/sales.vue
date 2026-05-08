@@ -7,9 +7,13 @@ definePageMeta({
 interface VendorSale {
   saleRecordId: string
   sourceBatchId: string
+  sourcePeriod: string
   soldAt: string
   title: string
   quantity: number
+  unit: string
+  discount: string
+  extended: string
   grossAmount: string
   commissionAmount: string
   currency: string
@@ -19,10 +23,12 @@ const auth = useVendorAuth()
 
 const columns = [
   { key: 'soldAt', label: 'Sold At' },
-  { key: 'sourceBatchId', label: 'Batch' },
+  { key: 'sourcePeriod', label: 'Period' },
   { key: 'title', label: 'Title' },
   { key: 'quantity', label: 'Qty' },
-  { key: 'grossAmount', label: 'Gross' },
+  { key: 'unit', label: 'Unit Price' },
+  { key: 'discount', label: 'Discount' },
+  { key: 'grossAmount', label: 'Gross Sale' },
   { key: 'commissionAmount', label: 'Commission' }
 ]
 
@@ -80,7 +86,7 @@ const { data, pending, error, refresh } = await useAsyncData(
         Imported sales records
       </h1>
       <p class="auth-copy">
-        Review every imported sale record with source batch traceability.
+        Review every imported sale record by source period.
       </p>
     </header>
 
@@ -114,9 +120,16 @@ const { data, pending, error, refresh } = await useAsyncData(
         :columns="columns"
         :rows="data.sales"
         :row-key="(row) => row.saleRecordId"
+        :stack-on-mobile="true"
       >
         <template #cell:soldAt="{ row }">
           {{ formatDate(row.soldAt as string) }}
+        </template>
+        <template #cell:unit="{ row }">
+          {{ formatCurrency(row.unit as string, row.currency as string) }}
+        </template>
+        <template #cell:discount="{ row }">
+          {{ formatCurrency(row.discount as string, row.currency as string) }}
         </template>
         <template #cell:grossAmount="{ row }">
           {{

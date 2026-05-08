@@ -7,6 +7,7 @@ definePageMeta({
 interface AuditEventRecord {
   auditEventId: string
   actorId: string
+  actorDisplayName: string
   actorRole: 'admin' | 'vendor'
   action: string
   entityType: string
@@ -158,7 +159,7 @@ const metrics = computed(() => {
 
       <div class="vendor-actions">
         <NuxtLink
-          to="/admin/payout-failures"
+          to="/admin/payout-requests/payout-failures"
           class="portal-button portal-button--secondary"
         >
           View payout failures
@@ -323,7 +324,7 @@ const metrics = computed(() => {
           <div>
             <AppStatusBadge :status="row.actorRole as string" />
             <p class="panel-copy">
-              {{ row.actorId as string }}
+              {{ row.actorDisplayName as string }}
             </p>
           </div>
         </template>

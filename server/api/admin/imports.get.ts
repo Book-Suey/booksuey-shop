@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { connectToDatabase } from '../../config/database'
 import { SalesImportBatch } from '../../models/SalesImportBatch'
+import { getAdminDisplayNameMap } from '../../utils/displayName'
 import { requireAdmin } from '../../utils/adminAuth'
 
 const importsQuerySchema = z.object({
@@ -53,6 +54,9 @@ export default defineEventHandler(async (event) => {
 
   const limit = parsedQuery.data.limit ?? 100
   const imports = await SalesImportBatch.find(filters).sort({ uploadedAt: -1, _id: -1 }).limit(limit)
+  const uploadedByMap = await getAdminDisplayNameMap(
+    imports.map((batch: { uploadedBy: string }) => batch.uploadedBy)
+  )
 
   return {
     imports: imports.map((batch: {
@@ -64,23 +68,27 @@ export default defineEventHandler(async (event) => {
       totalRows: number
       acceptedRows: number
       rejectedRows: number
+      nonVendorRejectedRows: number
       duplicateRows: number
       errors: Array<{ code: string, rowNumber: number, reason: string, hint: string }>
       unmappedSources: string[]
+      nonVendorSources: string[]
     }) => ({
       batchId: batch.batchId,
       sourcePeriod: batch.sourcePeriod,
-      uploadedBy: batch.uploadedBy,
+      uploadedBy: uploadedByMap.get(batch.uploadedBy) || batch.uploadedBy,
       uploadedAt: batch.uploadedAt,
       status: batch.status,
       summary: {
         total: batch.totalRows,
         accepted: batch.acceptedRows,
         rejected: batch.rejectedRows,
+        nonVendorRejected: batch.nonVendorRejectedRows,
         duplicates: batch.duplicateRows
       },
       errors: batch.errors,
-      unmappedSources: batch.unmappedSources
+      unmappedSources: batch.unmappedSources,
+      nonVendorSources: batch.nonVendorSources
     }))
   }
 })

@@ -257,7 +257,7 @@ async function copyInviteLink(): Promise<void> {
         </template>
         <template #cell:actions="{ row }">
           <NuxtLink :to="`/admin/vendors/${row.vendorId as string}`">
-            Edit
+            View Details
           </NuxtLink>
         </template>
       </AppDataTable>

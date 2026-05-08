@@ -6,6 +6,7 @@ export type AdminAccountStatus = 'active' | 'disabled'
 export interface IAdminAccount {
   _id?: Types.ObjectId
   adminId: string
+  displayName?: string
   email: string
   passwordHash: string
   status: AdminAccountStatus
@@ -21,6 +22,7 @@ export interface IAdminAccount {
 const AdminAccountSchema = new mongoose.Schema<IAdminAccount>(
   {
     adminId: { type: String, required: true, unique: true },
+    displayName: { type: String, trim: true, default: '' },
     email: { type: String, required: true, unique: true, lowercase: true },
     passwordHash: { type: String, required: true },
     status: {

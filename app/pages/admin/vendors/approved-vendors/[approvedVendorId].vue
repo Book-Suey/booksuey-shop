@@ -98,7 +98,7 @@ async function submitUpdate(): Promise<void> {
     successMessage.value = response.message
     if (response.approvedVendor.basilId !== approvedVendorId.value) {
       await navigateTo(
-        `/admin/approved-vendors/${response.approvedVendor.basilId}`
+        `/admin/vendors/approved-vendors/${response.approvedVendor.basilId}`
       )
       return
     }
@@ -127,7 +127,7 @@ async function deleteRecord(): Promise<void> {
       method: 'DELETE'
     })
 
-    await navigateTo('/admin/approved-vendors')
+    await navigateTo('/admin/vendors/approved-vendors')
   } catch (deleteError: unknown) {
     const statusMessage = (deleteError as { statusMessage?: string })
       ?.statusMessage
@@ -251,7 +251,7 @@ async function deleteRecord(): Promise<void> {
             {{ isDeleting ? "Deleting..." : "Delete record" }}
           </button>
           <NuxtLink
-            to="/admin/approved-vendors"
+            to="/admin/vendors/approved-vendors"
             class="portal-button portal-button--secondary"
           >
             Back to list
