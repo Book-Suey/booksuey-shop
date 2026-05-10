@@ -45,6 +45,61 @@ export function buildAbsoluteAppUrl(path: string): string {
   return `${getAppBaseUrl()}${normalizedPath}`
 }
 
+function buildBrandedEmailHtml(input: {
+  recipientName: string
+  title: string
+  introText: string
+  ctaLabel: string
+  ctaUrl: string
+  expiresText: string
+  footerText: string
+}): string {
+  const logoUrl = buildAbsoluteAppUrl('/LogoIcon.svg')
+
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    `<title>${input.title}</title>`,
+    '</head>',
+    '<body style="margin:0;padding:0;background-color:#f7fbf8;font-family:Arial,sans-serif;color:#1f3a30;">',
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f7fbf8;padding:24px 12px;">',
+    '<tr>',
+    '<td align="center">',
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background-color:#fffef6;border:1px solid #d7e7de;border-radius:14px;overflow:hidden;">',
+    '<tr>',
+    '<td style="padding:24px 28px 12px 28px;background:linear-gradient(135deg,#fdf2d1 0%,#e4fff2 100%);">',
+    `<img src="${logoUrl}" alt="Book Suey" width="56" height="56" style="display:block;border:0;outline:none;text-decoration:none;">`,
+    '<p style="margin:12px 0 0 0;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#2f4a3d;font-weight:700;">Book Suey</p>',
+    `<h1 style="margin:8px 0 0 0;font-size:24px;line-height:1.3;color:#163127;">${input.title}</h1>`,
+    '</td>',
+    '</tr>',
+    '<tr>',
+    '<td style="padding:20px 28px 26px 28px;">',
+    `<p style="margin:0 0 14px 0;font-size:16px;line-height:1.6;">Hello ${input.recipientName},</p>`,
+    `<p style="margin:0 0 18px 0;font-size:15px;line-height:1.7;color:#304d3f;">${input.introText}</p>`,
+    '<table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 18px 0;">',
+    '<tr>',
+    '<td style="border-radius:8px;background-color:#2a8d4d;">',
+    `<a href="${input.ctaUrl}" style="display:inline-block;padding:12px 18px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">${input.ctaLabel}</a>`,
+    '</td>',
+    '</tr>',
+    '</table>',
+    `<p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#304d3f;">${input.expiresText}</p>`,
+    `<p style="margin:0;font-size:13px;line-height:1.6;color:#5a7468;">${input.footerText}</p>`,
+    '</td>',
+    '</tr>',
+    '</table>',
+    '</td>',
+    '</tr>',
+    '</table>',
+    '</body>',
+    '</html>'
+  ].join('')
+}
+
 export async function sendEmailViaMailgun(input: SendEmailInput): Promise<EmailDeliveryResult> {
   const mailgunConfig = resolveMailgunConfig()
 
@@ -104,13 +159,15 @@ export async function sendVendorInviteEmail(input: {
     'If you were not expecting this message, you can ignore this email.'
   ].join('\n')
 
-  const html = [
-    `<p>Hello ${input.recipientName},</p>`,
-    '<p>An admin has invited you to access your Book Suey vendor account.</p>',
-    `<p><a href="${inviteUrl}">Set your password</a></p>`,
-    `<p>This link expires on ${input.expiresAt.toLocaleString('en-US')}.</p>`,
-    '<p>If you were not expecting this message, you can ignore this email.</p>'
-  ].join('')
+  const html = buildBrandedEmailHtml({
+    recipientName: input.recipientName,
+    title: 'You are invited',
+    introText: 'An admin has invited you to access your Book Suey vendor account.',
+    ctaLabel: 'Set your password',
+    ctaUrl: inviteUrl,
+    expiresText: `This link expires on ${input.expiresAt.toLocaleString('en-US')}.`,
+    footerText: 'If you were not expecting this message, you can ignore this email.'
+  })
 
   return sendEmailViaMailgun({
     to: input.recipientEmail,
@@ -139,13 +196,52 @@ export async function sendVendorPasswordResetEmail(input: {
     'If you did not request this, you can ignore this email.'
   ].join('\n')
 
-  const html = [
-    `<p>Hello ${input.recipientName},</p>`,
-    '<p>We received a request to reset your Book Suey vendor account password.</p>',
-    `<p><a href="${resetUrl}">Set a new password</a></p>`,
-    `<p>This link expires on ${input.expiresAt.toLocaleString('en-US')}.</p>`,
-    '<p>If you did not request this, you can ignore this email.</p>'
-  ].join('')
+  const html = buildBrandedEmailHtml({
+    recipientName: input.recipientName,
+    title: 'Reset your vendor password',
+    introText: 'We received a request to reset your Book Suey vendor account password.',
+    ctaLabel: 'Set a new password',
+    ctaUrl: resetUrl,
+    expiresText: `This link expires on ${input.expiresAt.toLocaleString('en-US')}.`,
+    footerText: 'If you did not request this, you can ignore this email.'
+  })
+
+  return sendEmailViaMailgun({
+    to: input.recipientEmail,
+    subject,
+    text,
+    html
+  })
+}
+
+export async function sendAdminPasswordResetEmail(input: {
+  recipientEmail: string
+  recipientName: string
+  resetPath: string
+  expiresAt: Date
+}): Promise<EmailDeliveryResult> {
+  const resetUrl = buildAbsoluteAppUrl(input.resetPath)
+
+  const subject = 'Reset your Book Suey admin password'
+  const text = [
+    `Hello ${input.recipientName},`,
+    '',
+    'We received a request to reset your Book Suey admin account password.',
+    `Set your new password here: ${resetUrl}`,
+    `This link expires on ${input.expiresAt.toLocaleString('en-US')}.`,
+    '',
+    'If you did not request this, you can ignore this email.'
+  ].join('\n')
+
+  const html = buildBrandedEmailHtml({
+    recipientName: input.recipientName,
+    title: 'Reset your admin password',
+    introText: 'We received a request to reset your Book Suey admin account password.',
+    ctaLabel: 'Set a new password',
+    ctaUrl: resetUrl,
+    expiresText: `This link expires on ${input.expiresAt.toLocaleString('en-US')}.`,
+    footerText: 'If you did not request this, you can ignore this email.'
+  })
 
   return sendEmailViaMailgun({
     to: input.recipientEmail,
