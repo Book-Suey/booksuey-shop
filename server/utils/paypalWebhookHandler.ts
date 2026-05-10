@@ -22,6 +22,37 @@ type PayPalWebhookEvent = {
   resource?: PayPalWebhookResource
 }
 
+type CanonicalPayoutEventType
+  = | 'PAYOUT.ITEM.SUCCEEDED'
+    | 'PAYOUT.ITEM.FAILED'
+    | 'PAYOUT.ITEM.RETURNED'
+    | 'PAYOUT.ITEM.UNCLAIMED'
+
+function toCanonicalPayoutEventType(eventType: string | undefined): CanonicalPayoutEventType | null {
+  if (!eventType) {
+    return null
+  }
+
+  const normalized = eventType.trim().toUpperCase()
+
+  const aliasMap: Record<string, CanonicalPayoutEventType> = {
+    'PAYOUT.ITEM.SUCCEEDED': 'PAYOUT.ITEM.SUCCEEDED',
+    'PAYOUT.ITEM.FAILED': 'PAYOUT.ITEM.FAILED',
+    'PAYOUT.ITEM.RETURNED': 'PAYOUT.ITEM.RETURNED',
+    'PAYOUT.ITEM.UNCLAIMED': 'PAYOUT.ITEM.UNCLAIMED',
+    'PAYMENT.PAYOUTS-ITEM.SUCCEEDED': 'PAYOUT.ITEM.SUCCEEDED',
+    'PAYMENT.PAYOUTS-ITEM.FAILED': 'PAYOUT.ITEM.FAILED',
+    'PAYMENT.PAYOUTS-ITEM.RETURNED': 'PAYOUT.ITEM.RETURNED',
+    'PAYMENT.PAYOUTS-ITEM.UNCLAIMED': 'PAYOUT.ITEM.UNCLAIMED',
+    'PAYMENT.PAYOUTS_ITEM.SUCCEEDED': 'PAYOUT.ITEM.SUCCEEDED',
+    'PAYMENT.PAYOUTS_ITEM.FAILED': 'PAYOUT.ITEM.FAILED',
+    'PAYMENT.PAYOUTS_ITEM.RETURNED': 'PAYOUT.ITEM.RETURNED',
+    'PAYMENT.PAYOUTS_ITEM.UNCLAIMED': 'PAYOUT.ITEM.UNCLAIMED'
+  }
+
+  return aliasMap[normalized] || null
+}
+
 function resolveFailureReason(resource?: PayPalWebhookResource): string {
   if (!resource) {
     return 'Payout failed at provider'
@@ -118,16 +149,14 @@ async function findDisbursementForWebhook(resource?: PayPalWebhookResource): Pro
 
 export async function handlePayPalEvent(rawEvent: unknown): Promise<void> {
   const event = rawEvent as PayPalWebhookEvent
-  if (!event.event_type) {
+  const canonicalEventType = toCanonicalPayoutEventType(event.event_type)
+
+  if (!canonicalEventType) {
     return
   }
 
   const canProcess = await ensureWebhookNotProcessed(event)
   if (!canProcess) {
-    return
-  }
-
-  if (!['PAYOUT.ITEM.SUCCEEDED', 'PAYOUT.ITEM.FAILED', 'PAYOUT.ITEM.RETURNED', 'PAYOUT.ITEM.UNCLAIMED'].includes(event.event_type)) {
     return
   }
 
@@ -138,7 +167,7 @@ export async function handlePayPalEvent(rawEvent: unknown): Promise<void> {
 
   const occurredAt = resolveEventDate(event)
 
-  if (event.event_type === 'PAYOUT.ITEM.SUCCEEDED') {
+  if (canonicalEventType === 'PAYOUT.ITEM.SUCCEEDED') {
     await settleDisbursementPaid({
       ...disbursement,
       occurredAt,

@@ -217,4 +217,82 @@ describe('PayPal webhook processing', () => {
     const paidEntries = await LedgerEntry.find({ referenceId: 'payout_webhook_replay', entryType: 'paid' })
     expect(paidEntries).toHaveLength(1)
   })
+
+  it('handles PAYMENT.PAYOUTS-ITEM.SUCCEEDED event naming variant', async () => {
+    await seedDisbursingPayout({
+      vendorId: 'vendor_webhook_variant_paid',
+      payoutRequestId: 'payout_webhook_variant_paid',
+      disbursementId: 'disb_webhook_variant_paid',
+      providerItemId: 'item_webhook_variant_paid',
+      amount: '3.25'
+    })
+
+    mockPayPalWebhookVerification()
+
+    const { default: handlePayPalWebhook } = await import('../../server/api/webhooks/paypal.post')
+
+    await handlePayPalWebhook({
+      headers: {
+        'paypal-transmission-id': 'tx-variant-1',
+        'paypal-transmission-time': '2026-05-10T14:10:00.000Z',
+        'paypal-transmission-sig': 'sig-variant-1',
+        'paypal-cert-url': 'https://api-m.paypal.com/certs/test',
+        'paypal-auth-algo': 'SHA256withRSA'
+      },
+      body: {
+        id: 'WH-PAYOUT-VARIANT-SUCCESS-1',
+        event_type: 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED',
+        create_time: '2026-05-10T14:10:00.000Z',
+        resource: {
+          payout_item_id: 'item_webhook_variant_paid',
+          transaction_status: 'SUCCESS'
+        }
+      }
+    })
+
+    const payout = await PayoutRequest.findOne({ payoutRequestId: 'payout_webhook_variant_paid' })
+    const disbursement = await PaymentDisbursement.findOne({ disbursementId: 'disb_webhook_variant_paid' })
+
+    expect(payout?.status).toBe('paid')
+    expect(disbursement?.status).toBe('paid')
+  })
+
+  it('handles PAYMENT.PAYOUTS-ITEM.UNCLAIMED event naming variant', async () => {
+    await seedDisbursingPayout({
+      vendorId: 'vendor_webhook_variant_unclaimed',
+      payoutRequestId: 'payout_webhook_variant_unclaimed',
+      disbursementId: 'disb_webhook_variant_unclaimed',
+      providerItemId: 'item_webhook_variant_unclaimed',
+      amount: '6.10'
+    })
+
+    mockPayPalWebhookVerification()
+
+    const { default: handlePayPalWebhook } = await import('../../server/api/webhooks/paypal.post')
+
+    await handlePayPalWebhook({
+      headers: {
+        'paypal-transmission-id': 'tx-variant-2',
+        'paypal-transmission-time': '2026-05-10T14:20:00.000Z',
+        'paypal-transmission-sig': 'sig-variant-2',
+        'paypal-cert-url': 'https://api-m.paypal.com/certs/test',
+        'paypal-auth-algo': 'SHA256withRSA'
+      },
+      body: {
+        id: 'WH-PAYOUT-VARIANT-UNCLAIMED-1',
+        event_type: 'PAYMENT.PAYOUTS-ITEM.UNCLAIMED',
+        create_time: '2026-05-10T14:20:00.000Z',
+        resource: {
+          payout_item_id: 'item_webhook_variant_unclaimed',
+          transaction_status: 'UNCLAIMED'
+        }
+      }
+    })
+
+    const payout = await PayoutRequest.findOne({ payoutRequestId: 'payout_webhook_variant_unclaimed' })
+    const disbursement = await PaymentDisbursement.findOne({ disbursementId: 'disb_webhook_variant_unclaimed' })
+
+    expect(payout?.status).toBe('failed')
+    expect(disbursement?.status).toBe('failed')
+  })
 })
