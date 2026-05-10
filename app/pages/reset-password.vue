@@ -1,94 +1,94 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "guest-only",
-});
+  middleware: 'guest-only'
+})
 
-const route = useRoute();
-const isSubmitting = ref(false);
-const formError = ref<string | null>(null);
+const route = useRoute()
+const isSubmitting = ref(false)
+const formError = ref<string | null>(null)
 
 const form = reactive({
-  password: "",
-  confirmPassword: "",
-});
+  password: '',
+  confirmPassword: ''
+})
 
 const token = computed(() => {
-  const tokenQuery = route.query.token;
+  const tokenQuery = route.query.token
 
-  if (typeof tokenQuery === "string") {
-    return tokenQuery;
+  if (typeof tokenQuery === 'string') {
+    return tokenQuery
   }
 
-  return "";
-});
+  return ''
+})
 
 const {
   data: verification,
   pending: isVerifying,
   error: verifyError,
-  refresh: refreshVerification,
+  refresh: refreshVerification
 } = await useAsyncData(
-  "unified-reset-token-verification",
+  'unified-reset-token-verification',
   async () => {
     if (!token.value) {
       throw createError({
         statusCode: 400,
-        statusMessage: "Missing reset token.",
-      });
+        statusMessage: 'Missing reset token.'
+      })
     }
 
-    return await $fetch<{ valid: boolean; email: string }>(
-      "/api/auth/verify-reset-token",
+    return await $fetch<{ valid: boolean, email: string }>(
+      '/api/auth/verify-reset-token',
       {
-        method: "GET",
+        method: 'GET',
         query: {
-          token: token.value,
-        },
-      },
-    );
+          token: token.value
+        }
+      }
+    )
   },
   {
     server: false,
     watch: [token],
-    default: () => null,
-  },
-);
+    default: () => null
+  }
+)
 
 async function submitPasswordUpdate(): Promise<void> {
-  formError.value = null;
+  formError.value = null
 
   if (!token.value) {
-    formError.value = "Missing reset token.";
-    return;
+    formError.value = 'Missing reset token.'
+    return
   }
 
   if (form.password.length < 8) {
-    formError.value = "Password must be at least 8 characters.";
-    return;
+    formError.value = 'Password must be at least 8 characters.'
+    return
   }
 
   if (form.password !== form.confirmPassword) {
-    formError.value = "Passwords do not match.";
-    return;
+    formError.value = 'Passwords do not match.'
+    return
   }
 
-  isSubmitting.value = true;
+  isSubmitting.value = true
 
   try {
-    await $fetch<{ message: string }>("/api/auth/update-password", {
-      method: "POST",
+    await $fetch<{ message: string }>('/api/auth/update-password', {
+      method: 'POST',
       body: {
         token: token.value,
-        password: form.password,
-      },
-    });
+        password: form.password
+      }
+    })
 
-    await navigateTo("/auth-success?event=reset-password");
+    await navigateTo('/auth-success?event=reset-password')
   } catch (error: unknown) {
-    const statusMessage = (error as { statusMessage?: string })?.statusMessage;
-    formError.value = statusMessage || "Unable to update password right now.";
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage
+    formError.value = statusMessage || 'Unable to update password right now.'
   } finally {
-    isSubmitting.value = false;
+    isSubmitting.value = false
   }
 }
 </script>
@@ -96,9 +96,15 @@ async function submitPasswordUpdate(): Promise<void> {
 <template>
   <section class="auth-page">
     <article class="auth-card">
-      <p class="auth-kicker">Account access</p>
-      <h1 class="auth-title">Set a new password</h1>
-      <p class="auth-copy">Choose a strong password for your account.</p>
+      <p class="auth-kicker">
+        Account access
+      </p>
+      <h1 class="auth-title">
+        Set a new password
+      </h1>
+      <p class="auth-copy">
+        Choose a strong password for your account.
+      </p>
 
       <AppLoadingState
         v-if="isVerifying"
@@ -110,13 +116,16 @@ async function submitPasswordUpdate(): Promise<void> {
         v-else-if="verifyError"
         title="Reset link is invalid"
         :message="
-          (verifyError as { statusMessage?: string })?.statusMessage ||
-          'The reset token is invalid or expired.'
+          (verifyError as { statusMessage?: string })?.statusMessage
+            || 'The reset token is invalid or expired.'
         "
         retry-label="Verify again"
         @retry="refreshVerification"
       >
-        <NuxtLink to="/forgot-password" class="auth-inline-link">
+        <NuxtLink
+          to="/forgot-password"
+          class="auth-inline-link"
+        >
           Request a new reset link
         </NuxtLink>
       </AppErrorState>
@@ -139,7 +148,7 @@ async function submitPasswordUpdate(): Promise<void> {
             minlength="8"
             autocomplete="new-password"
             placeholder="At least 8 characters"
-          />
+          >
         </label>
 
         <label>
@@ -151,10 +160,13 @@ async function submitPasswordUpdate(): Promise<void> {
             minlength="8"
             autocomplete="new-password"
             placeholder="Re-enter new password"
-          />
+          >
         </label>
 
-        <p v-if="formError" class="auth-error">
+        <p
+          v-if="formError"
+          class="auth-error"
+        >
           {{ formError }}
         </p>
 

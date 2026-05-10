@@ -11,7 +11,7 @@ interface EmailDeliveryResult {
 }
 
 function getAppBaseUrl(): string {
-  const configuredBaseUrl = process.env.PUBLIC_APP_URL || process.env.APP_BASE_URL
+  const configuredBaseUrl = process.env.APP_URL || process.env.PUBLIC_APP_URL || process.env.APP_BASE_URL
 
   if (!configuredBaseUrl) {
     return 'http://localhost:3000'
