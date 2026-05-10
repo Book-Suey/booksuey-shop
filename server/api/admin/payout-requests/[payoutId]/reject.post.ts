@@ -3,6 +3,7 @@ import { connectToDatabase } from '../../../../config/database'
 import { AuditEvent } from '../../../../models/AuditEvent'
 import { LedgerEntry } from '../../../../models/LedgerEntry'
 import { PayoutRequest } from '../../../../models/PayoutRequest'
+import { Vendor } from '../../../../models/Vendor'
 import { recomputeBalanceSnapshot } from '../../../../utils/balance'
 import { requireAdmin } from '../../../../utils/adminAuth'
 import { runWithOptionalTransaction } from '../../../../utils/transactions'
@@ -49,6 +50,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    const vendor = await Vendor.findOne({ vendorId: payoutRequest.vendorId }, undefined, { session })
+    const approvedVendorId = vendor?.approvedVendorId || payoutRequest.vendorId
+
     const now = new Date()
     const updatedRequest = await PayoutRequest.findOneAndUpdate(
       { payoutRequestId: payoutId, status: 'requested' },
@@ -73,6 +77,7 @@ export default defineEventHandler(async (event) => {
     await LedgerEntry.create([{
       entryId: `ledger_release_${updatedRequest.payoutRequestId}`,
       vendorId: updatedRequest.vendorId,
+      approvedVendorId,
       entryType: 'release',
       amount: updatedRequest.amount.toString(),
       currency: 'USD',
@@ -81,7 +86,7 @@ export default defineEventHandler(async (event) => {
       occurredAt: now
     }], { session })
 
-    await recomputeBalanceSnapshot(updatedRequest.vendorId)
+    await recomputeBalanceSnapshot(updatedRequest.vendorId, approvedVendorId)
 
     await AuditEvent.create([{
       auditEventId: `audit_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -104,7 +109,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       payoutRequest: updatedRequest,
-      balance: await recomputeBalanceSnapshot(updatedRequest.vendorId)
+      balance: await recomputeBalanceSnapshot(updatedRequest.vendorId, approvedVendorId)
     }
   })
 

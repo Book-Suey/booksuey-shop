@@ -1,95 +1,95 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'admin-auth',
-  layout: 'admin'
-})
+  middleware: "admin-auth",
+  layout: "admin",
+});
 
 interface PayoutRequestDetail {
-  payoutRequestId: string
-  vendorId: string
-  vendorName: string
-  amount: string
-  currency: string
+  payoutRequestId: string;
+  vendorId: string;
+  vendorName: string;
+  amount: string;
+  currency: string;
   status:
-    | 'requested'
-    | 'approved'
-    | 'disbursing'
-    | 'paid'
-    | 'failed'
-    | 'rejected'
-  requestedAt: string
-  approvedAt?: string
-  rejectedAt?: string
-  rejectionReason?: string
-  reviewedBy?: string
-  reviewNote?: string
-  disbursingAt?: string
-  paidAt?: string
-  failedAt?: string
+    | "requested"
+    | "approved"
+    | "disbursing"
+    | "paid"
+    | "failed"
+    | "rejected";
+  requestedAt: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+  disbursingAt?: string;
+  paidAt?: string;
+  failedAt?: string;
 }
 
-const auth = useAdminAuth()
-const route = useRoute()
-const router = useRouter()
+const auth = useAdminAuth();
+const route = useRoute();
+const router = useRouter();
 
-const isApproving = ref(false)
-const isRejecting = ref(false)
-const formError = ref<string | null>(null)
+const isApproving = ref(false);
+const isRejecting = ref(false);
+const formError = ref<string | null>(null);
 const approvalForm = reactive({
-  reviewNote: ''
-})
+  reviewNote: "",
+});
 
 const rejectionForm = reactive({
-  reason: ''
-})
+  reason: "",
+});
 
 function formatDate(value: string): string {
-  const parsed = new Date(value)
+  const parsed = new Date(value);
 
   if (Number.isNaN(parsed.getTime())) {
-    return value
+    return value;
   }
 
-  return parsed.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  })
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function formatCurrency(amount: string): string {
-  const num = parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(num)
+  const num = parseFloat(amount);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(num);
 }
 
 const { data, pending, error, refresh } = await useAsyncData(
   () => `admin-payout-detail-${route.params.payoutId as string}`,
   async () => {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
     return await $fetch<{ payoutRequest: PayoutRequestDetail }>(
       `/api/admin/payout-requests/${route.params.payoutId as string}`,
       {
-        method: 'GET',
-        headers: auth.authHeaders()
-      }
-    )
+        method: "GET",
+        headers: auth.authHeaders(),
+      },
+    );
   },
   {
     server: false,
     default: () => ({
       payoutRequest: {
-        payoutRequestId: '',
-        vendorId: '',
-        vendorName: '',
-        amount: '0',
-        currency: 'USD',
-        status: 'requested' as const,
+        payoutRequestId: "",
+        vendorId: "",
+        vendorName: "",
+        amount: "0",
+        currency: "USD",
+        status: "requested" as const,
         requestedAt: new Date().toISOString(),
         approvedAt: undefined,
         rejectedAt: undefined,
@@ -98,92 +98,88 @@ const { data, pending, error, refresh } = await useAsyncData(
         reviewNote: undefined,
         disbursingAt: undefined,
         paidAt: undefined,
-        failedAt: undefined
-      }
-    })
-  }
-)
+        failedAt: undefined,
+      },
+    }),
+  },
+);
 
 async function handleApprove(): Promise<void> {
-  formError.value = null
-  isApproving.value = true
+  formError.value = null;
+  isApproving.value = true;
 
   try {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
     await $fetch<{ payoutRequest: PayoutRequestDetail }>(
       `/api/admin/payout-requests/${route.params.payoutId as string}/approve`,
       {
-        method: 'POST',
+        method: "POST",
         headers: auth.authHeaders(),
         body: {
-          reviewNote: approvalForm.reviewNote.trim()
-        }
-      }
-    )
+          reviewNote: approvalForm.reviewNote.trim(),
+        },
+      },
+    );
 
-    approvalForm.reviewNote = ''
-    await refresh()
+    approvalForm.reviewNote = "";
+    await refresh();
   } catch (error: unknown) {
-    const statusMessage = (error as { statusMessage?: string })?.statusMessage
-    formError.value
-      = statusMessage || 'Unable to approve this payout request right now.'
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage;
+    formError.value =
+      statusMessage || "Unable to approve this payout request right now.";
   } finally {
-    isApproving.value = false
+    isApproving.value = false;
   }
 }
 
 async function handleReject(): Promise<void> {
-  formError.value = null
+  formError.value = null;
 
   if (!rejectionForm.reason.trim()) {
-    formError.value = 'Enter a reason for rejecting this payout request.'
-    return
+    formError.value = "Enter a reason for rejecting this payout request.";
+    return;
   }
 
-  isRejecting.value = true
+  isRejecting.value = true;
 
   try {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
     await $fetch<{ payoutRequest: PayoutRequestDetail }>(
       `/api/admin/payout-requests/${route.params.payoutId as string}/reject`,
       {
-        method: 'POST',
+        method: "POST",
         headers: auth.authHeaders(),
         body: {
-          reason: rejectionForm.reason.trim()
-        }
-      }
-    )
+          reason: rejectionForm.reason.trim(),
+        },
+      },
+    );
 
-    rejectionForm.reason = ''
-    await refresh()
+    rejectionForm.reason = "";
+    await refresh();
   } catch (error: unknown) {
-    const statusMessage = (error as { statusMessage?: string })?.statusMessage
-    formError.value
-      = statusMessage || 'Unable to reject this payout request right now.'
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage;
+    formError.value =
+      statusMessage || "Unable to reject this payout request right now.";
   } finally {
-    isRejecting.value = false
+    isRejecting.value = false;
   }
 }
 
 async function handleDisbursement(): Promise<void> {
   await router.push(
-    `/admin/disbursements/new?payoutRequestId=${route.params.payoutId as string}`
-  )
+    `/admin/disbursements/new?payoutRequestId=${route.params.payoutId as string}`,
+  );
 }
 </script>
 
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">
-        Admin payout operations
-      </p>
-      <h1 class="auth-title">
-        Request {{ route.params.payoutId }}
-      </h1>
+      <p class="auth-kicker">Admin payout operations</p>
+      <h1 class="auth-title">Request {{ route.params.payoutId }}</h1>
       <p class="auth-copy">
         Review payout request details and approve, reject, or disburse the
         payment.
@@ -222,8 +218,8 @@ async function handleDisbursement(): Promise<void> {
       v-else-if="error"
       title="Unable to load payout request"
       :message="
-        (error as { statusMessage?: string })?.statusMessage
-          || 'Payout detail request failed.'
+        (error as { statusMessage?: string })?.statusMessage ||
+        'Payout detail request failed.'
       "
       @retry="refresh"
     />
@@ -231,108 +227,70 @@ async function handleDisbursement(): Promise<void> {
     <template v-else>
       <section class="admin-cards">
         <article class="admin-card">
-          <p class="admin-card__label">
-            Vendor
-          </p>
+          <p class="admin-card__label">Vendor</p>
           <p class="admin-card__value">
             {{ data.payoutRequest.vendorName }}
           </p>
         </article>
 
         <article class="admin-card">
-          <p class="admin-card__label">
-            Amount
-          </p>
+          <p class="admin-card__label">Amount</p>
           <p class="admin-card__value">
             {{ formatCurrency(data.payoutRequest.amount) }}
           </p>
         </article>
 
         <article class="admin-card">
-          <p class="admin-card__label">
-            Status
-          </p>
+          <p class="admin-card__label">Status</p>
           <p class="admin-card__value">
             <AppStatusBadge :status="data.payoutRequest.status" />
           </p>
         </article>
 
         <article class="admin-card">
-          <p class="admin-card__label">
-            Requested at
-          </p>
+          <p class="admin-card__label">Requested at</p>
           <p class="admin-card__value">
             {{ formatDate(data.payoutRequest.requestedAt) }}
           </p>
         </article>
 
-        <article
-          v-if="data.payoutRequest.approvedAt"
-          class="admin-card"
-        >
-          <p class="admin-card__label">
-            Approved at
-          </p>
+        <article v-if="data.payoutRequest.approvedAt" class="admin-card">
+          <p class="admin-card__label">Approved at</p>
           <p class="admin-card__value">
             {{ formatDate(data.payoutRequest.approvedAt) }}
           </p>
         </article>
 
-        <article
-          v-if="data.payoutRequest.reviewNote"
-          class="admin-card"
-        >
-          <p class="admin-card__label">
-            Review note
-          </p>
+        <article v-if="data.payoutRequest.reviewNote" class="admin-card">
+          <p class="admin-card__label">Review note</p>
           <p class="admin-card__value">
             {{ data.payoutRequest.reviewNote }}
           </p>
         </article>
 
-        <article
-          v-if="data.payoutRequest.rejectedAt"
-          class="admin-card"
-        >
-          <p class="admin-card__label">
-            Rejected at
-          </p>
+        <article v-if="data.payoutRequest.rejectedAt" class="admin-card">
+          <p class="admin-card__label">Rejected at</p>
           <p class="admin-card__value">
             {{ formatDate(data.payoutRequest.rejectedAt) }}
           </p>
         </article>
 
-        <article
-          v-if="data.payoutRequest.rejectionReason"
-          class="admin-card"
-        >
-          <p class="admin-card__label">
-            Rejection reason
-          </p>
+        <article v-if="data.payoutRequest.rejectionReason" class="admin-card">
+          <p class="admin-card__label">Rejection reason</p>
           <p class="admin-card__value">
             {{ data.payoutRequest.rejectionReason }}
           </p>
         </article>
 
-        <article
-          v-if="data.payoutRequest.disbursingAt"
-          class="admin-card"
-        >
-          <p class="admin-card__label">
-            Disbursing at
-          </p>
+        <article v-if="data.payoutRequest.disbursingAt" class="admin-card">
+          <p class="admin-card__label">Disbursing at</p>
           <p class="admin-card__value">
             {{ formatDate(data.payoutRequest.disbursingAt) }}
           </p>
         </article>
 
-        <article
-          v-if="data.payoutRequest.paidAt"
-          class="admin-card"
-        >
-          <p class="admin-card__label">
-            Paid at
-          </p>
+        <article v-if="data.payoutRequest.paidAt" class="admin-card">
+          <p class="admin-card__label">Paid at</p>
           <p class="admin-card__value">
             {{ formatDate(data.payoutRequest.paidAt) }}
           </p>
@@ -345,16 +303,13 @@ async function handleDisbursement(): Promise<void> {
             <h2>Approve payout request</h2>
             <p class="panel-copy">
               Approve this payout request to move it to the approved queue for
-              disbursement.
+              disbursement. Any note you add here is visible to the vendor.
             </p>
           </div>
 
-          <form
-            class="auth-form"
-            @submit.prevent="handleApprove"
-          >
+          <form class="auth-form" @submit.prevent="handleApprove">
             <label>
-              <span>Review note (optional)</span>
+              <span>Review note (optional, visible to vendor)</span>
               <textarea
                 v-model="approvalForm.reviewNote"
                 placeholder="Add any notes about this approval decision..."
@@ -362,10 +317,7 @@ async function handleDisbursement(): Promise<void> {
               />
             </label>
 
-            <p
-              v-if="formError"
-              class="auth-error"
-            >
+            <p v-if="formError" class="auth-error">
               {{ formError }}
             </p>
 
@@ -383,16 +335,14 @@ async function handleDisbursement(): Promise<void> {
           <div>
             <h2>Reject payout request</h2>
             <p class="panel-copy">
-              Reject this payout request and explain the reason to the vendor.
+              Reject this payout request and explain the reason. This message is
+              visible to the vendor.
             </p>
           </div>
 
-          <form
-            class="auth-form"
-            @submit.prevent="handleReject"
-          >
+          <form class="auth-form" @submit.prevent="handleReject">
             <label>
-              <span>Rejection reason</span>
+              <span>Rejection reason (visible to vendor)</span>
               <textarea
                 v-model="rejectionForm.reason"
                 placeholder="Explain why this payout is being rejected..."
@@ -401,10 +351,7 @@ async function handleDisbursement(): Promise<void> {
               />
             </label>
 
-            <p
-              v-if="formError"
-              class="auth-error"
-            >
+            <p v-if="formError" class="auth-error">
               {{ formError }}
             </p>
 
@@ -446,7 +393,8 @@ async function handleDisbursement(): Promise<void> {
             <h2>Payout action completed</h2>
             <p class="panel-copy">
               This payout request has already been processed. Its current status
-              is <strong>{{ data.payoutRequest.status }}</strong>.
+              is <strong>{{ data.payoutRequest.status }}</strong
+              >.
             </p>
           </div>
         </article>

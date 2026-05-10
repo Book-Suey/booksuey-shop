@@ -57,14 +57,23 @@ export function getLedgerEntryBalanceImpact(entryType: BalanceEntryType, amount:
   return decimalAmount.negated().toFixed(2)
 }
 
-export async function recomputeBalanceSnapshot(vendorId: string): Promise<{
+export async function recomputeBalanceSnapshot(vendorId: string, approvedVendorId?: string): Promise<{
   vendorId: string
   pendingAmount: string
   availableAmount: string
   paidAmount: string
   asOf: Date
 }> {
-  const entries = await LedgerEntry.find({ vendorId }).sort({ occurredAt: 1, _id: 1 }) as ILedgerEntry[]
+  const ledgerScopeQuery = approvedVendorId
+    ? {
+        $or: [
+          { vendorId },
+          { approvedVendorId }
+        ]
+      }
+    : { vendorId }
+
+  const entries = await LedgerEntry.find(ledgerScopeQuery).sort({ occurredAt: 1, _id: 1 }) as ILedgerEntry[]
 
   const balance = createZeroBalance()
 

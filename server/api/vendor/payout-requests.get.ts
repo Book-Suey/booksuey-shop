@@ -14,6 +14,8 @@ export default defineEventHandler(async (event) => {
       amount: { toString(): string }
       currency: string
       status: string
+      reviewNote?: string
+      rejectionReason?: string
       requestedAt: Date
       approvedAt?: Date
       rejectedAt?: Date
@@ -27,6 +29,8 @@ export default defineEventHandler(async (event) => {
       amount: request.amount.toString(),
       currency: request.currency,
       status: request.status,
+      reviewNote: request.reviewNote,
+      rejectionReason: request.rejectionReason,
       requestedAt: request.requestedAt,
       approvedAt: request.approvedAt,
       rejectedAt: request.rejectedAt,

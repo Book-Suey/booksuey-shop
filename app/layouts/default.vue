@@ -55,10 +55,6 @@ async function handleLogout(): Promise<void> {
               class="app-nav__link"
             >Balance</NuxtLink>
             <NuxtLink
-              to="/vendor/ledger"
-              class="app-nav__link"
-            >Ledger</NuxtLink>
-            <NuxtLink
               to="/vendor/payouts"
               class="app-nav__link"
             >Payouts</NuxtLink>

@@ -5,7 +5,7 @@ import { PayoutRequest } from '../../models/PayoutRequest'
 import { recomputeBalanceSnapshot } from '../../utils/balance'
 import { createPayoutRequestId, formatUsdAmount, parsePositivePayoutAmount } from '../../utils/payouts'
 import { checkRateLimit } from '../../utils/rateLimit'
-import { requireVendorId } from '../../utils/vendorContext'
+import { requireVendorScope } from '../../utils/vendorContext'
 
 const createPayoutRequestSchema = z.object({
   amount: z.union([z.string(), z.number()])
@@ -14,7 +14,8 @@ const createPayoutRequestSchema = z.object({
 export default defineEventHandler(async (event) => {
   await connectToDatabase()
 
-  const vendorId = requireVendorId(event)
+  const vendorScope = requireVendorScope(event)
+  const vendorId = vendorScope.vendorId
   const rateLimitResult = checkRateLimit(`payout:${vendorId}`, {
     max: 10,
     windowMs: 60 * 60 * 1000
@@ -38,7 +39,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const amount = parsePositivePayoutAmount(parsedBody.data.amount)
-  const currentBalance = await recomputeBalanceSnapshot(vendorId)
+  const currentBalance = await recomputeBalanceSnapshot(
+    vendorScope.vendorId,
+    vendorScope.approvedVendorId
+  )
 
   if (amount.gt(currentBalance.availableAmount)) {
     throw createError({
@@ -63,6 +67,7 @@ export default defineEventHandler(async (event) => {
   await LedgerEntry.create({
     entryId: `ledger_${payoutRequestId}`,
     vendorId,
+    approvedVendorId: vendorScope.approvedVendorId || vendorScope.vendorId,
     entryType: 'reservation',
     amount: formattedAmount,
     currency: 'USD',
@@ -71,7 +76,10 @@ export default defineEventHandler(async (event) => {
     occurredAt: now
   })
 
-  const updatedBalance = await recomputeBalanceSnapshot(vendorId)
+  const updatedBalance = await recomputeBalanceSnapshot(
+    vendorScope.vendorId,
+    vendorScope.approvedVendorId
+  )
 
   return {
     payoutRequest: {

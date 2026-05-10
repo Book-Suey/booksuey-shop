@@ -136,6 +136,12 @@ export default defineEventHandler(async (event) => {
       legalName: vendor.legalName,
       displayName: vendor.displayName,
       email: vendor.email,
+      phone: vendor.phone,
+      preferredPayoutMethod: vendor.preferredPayoutMethod,
+      payoutRecipientName: vendor.payoutRecipientName,
+      paypalEmail: vendor.paypalEmail,
+      venmoHandle: vendor.venmoHandle,
+      approvedVendorId: vendor.approvedVendorId,
       status: vendor.status
     }
   }

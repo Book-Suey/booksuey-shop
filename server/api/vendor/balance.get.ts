@@ -1,12 +1,15 @@
 import { connectToDatabase } from '../../config/database'
 import { recomputeBalanceSnapshot } from '../../utils/balance'
-import { requireVendorId } from '../../utils/vendorContext'
+import { requireVendorScope } from '../../utils/vendorContext'
 
 export default defineEventHandler(async (event) => {
   await connectToDatabase()
 
-  const vendorId = requireVendorId(event)
-  const snapshot = await recomputeBalanceSnapshot(vendorId)
+  const vendorScope = requireVendorScope(event)
+  const snapshot = await recomputeBalanceSnapshot(
+    vendorScope.vendorId,
+    vendorScope.approvedVendorId
+  )
 
   return {
     balance: {

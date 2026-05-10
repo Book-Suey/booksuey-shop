@@ -14,6 +14,10 @@ interface UnifiedVendorProfile {
   status: 'active' | 'inactive'
   approvedVendorId?: string
   phone?: string
+  preferredPayoutMethod?: 'paypal' | 'venmo'
+  payoutRecipientName?: string
+  paypalEmail?: string
+  venmoHandle?: string
 }
 
 type UnifiedLoginResponse

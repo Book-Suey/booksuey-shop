@@ -210,6 +210,54 @@ async function seedVendorFinancialData(): Promise<void> {
 }
 
 describe('Vendor Financial Endpoints', () => {
+  it('returns and updates vendor profile payout settings', async () => {
+    await Vendor.create({
+      vendorId: 'vendor_profile_1',
+      legalName: 'Profile Vendor LLC',
+      displayName: 'Profile Vendor',
+      email: 'profile@example.com',
+      passwordHash: 'hashed-password',
+      status: 'active',
+      approvedVendorId: 'BASIL-PROFILE-1'
+    })
+
+    const { default: getVendorMe } = await import('../../server/api/vendor/me.get')
+    const { default: patchVendorMe } = await import('../../server/api/vendor/me.patch')
+
+    const beforeUpdate = await getVendorMe({
+      context: { vendorId: 'vendor_profile_1' }
+    }) as { vendor: { displayName: string, approvedVendorId?: string } }
+
+    expect(beforeUpdate.vendor.displayName).toBe('Profile Vendor')
+    expect(beforeUpdate.vendor.approvedVendorId).toBe('BASIL-PROFILE-1')
+
+    const updated = await patchVendorMe({
+      context: { vendorId: 'vendor_profile_1' },
+      body: {
+        legalName: 'Profile Vendor Legal LLC',
+        displayName: 'Profile Vendor Updated',
+        preferredPayoutMethod: 'paypal',
+        payoutRecipientName: 'Profile Vendor Updated',
+        paypalEmail: 'payments@example.com',
+        venmoHandle: ''
+      }
+    }) as {
+      vendor: {
+        legalName: string
+        displayName: string
+        preferredPayoutMethod?: string
+        payoutRecipientName?: string
+        paypalEmail?: string
+      }
+    }
+
+    expect(updated.vendor.legalName).toBe('Profile Vendor Legal LLC')
+    expect(updated.vendor.displayName).toBe('Profile Vendor Updated')
+    expect(updated.vendor.preferredPayoutMethod).toBe('paypal')
+    expect(updated.vendor.payoutRecipientName).toBe('Profile Vendor Updated')
+    expect(updated.vendor.paypalEmail).toBe('payments@example.com')
+  })
+
   it('returns vendor-scoped sales and supports source period and date filters', async () => {
     await seedVendorFinancialData()
 

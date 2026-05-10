@@ -202,6 +202,12 @@ export default defineEventHandler(async (event) => {
       legalName: activeVendor.legalName,
       displayName: activeVendor.displayName,
       email: activeVendor.email,
+      phone: activeVendor.phone,
+      preferredPayoutMethod: activeVendor.preferredPayoutMethod,
+      payoutRecipientName: activeVendor.payoutRecipientName,
+      paypalEmail: activeVendor.paypalEmail,
+      venmoHandle: activeVendor.venmoHandle,
+      approvedVendorId: activeVendor.approvedVendorId,
       status: activeVendor.status
     }
   }

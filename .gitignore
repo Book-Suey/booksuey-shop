@@ -25,3 +25,6 @@ test-results/
 .env
 .env.*
 !.env.example
+
+# Local reference documents (not synced)
+PAYPAL_INTEGRATION_PLAN.md

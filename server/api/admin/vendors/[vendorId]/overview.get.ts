@@ -32,13 +32,25 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const snapshot = await recomputeBalanceSnapshot(vendor.vendorId)
+  const snapshot = await recomputeBalanceSnapshot(
+    vendor.vendorId,
+    vendor.approvedVendorId || undefined
+  )
+
+  const vendorScopeQuery = vendor.approvedVendorId
+    ? {
+        $or: [
+          { vendorId: vendor.vendorId },
+          { approvedVendorId: vendor.approvedVendorId }
+        ]
+      }
+    : { vendorId: vendor.vendorId }
 
   const [sales, ledgerEntries, payoutRequests] = await Promise.all([
-    SaleRecord.find({ vendorId: vendor.vendorId })
+    SaleRecord.find(vendorScopeQuery)
       .sort({ soldAt: -1, _id: -1 })
       .limit(8),
-    LedgerEntry.find({ vendorId: vendor.vendorId })
+    LedgerEntry.find(vendorScopeQuery)
       .sort({ occurredAt: -1, _id: -1 })
       .limit(8),
     PayoutRequest.find({ vendorId: vendor.vendorId })

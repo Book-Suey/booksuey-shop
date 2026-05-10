@@ -80,7 +80,7 @@ test('auth pages render without horizontal overflow on mobile', async ({ page })
 })
 
 test('major protected routes remain responsive on mobile and desktop', async ({ page }) => {
-  const protectedRoutes = ['/vendor/payouts', '/admin/payout-requests', '/admin/audit']
+  const protectedRoutes = ['/vendor/payouts', '/vendor/profile', '/admin/payout-requests', '/admin/audit']
 
   for (const route of protectedRoutes) {
     await page.setViewportSize({ width: 390, height: 844 })

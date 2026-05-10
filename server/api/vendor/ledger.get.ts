@@ -3,7 +3,7 @@ import { connectToDatabase } from '../../config/database'
 import { LedgerEntry } from '../../models/LedgerEntry'
 import { SaleRecord } from '../../models/SaleRecord'
 import { getLedgerEntryBalanceImpact } from '../../utils/balance'
-import { requireVendorId } from '../../utils/vendorContext'
+import { requireVendorScope } from '../../utils/vendorContext'
 
 type SaleLedgerReference = {
   soldAt: Date
@@ -17,8 +17,16 @@ type SaleLedgerReference = {
 export default defineEventHandler(async (event) => {
   await connectToDatabase()
 
-  const vendorId = requireVendorId(event)
-  const entries = await LedgerEntry.find({ vendorId }).sort({ occurredAt: 1, _id: 1 })
+  const vendorScope = requireVendorScope(event)
+  const ledgerScopeQuery = vendorScope.approvedVendorId
+    ? {
+        $or: [
+          { vendorId: vendorScope.vendorId },
+          { approvedVendorId: vendorScope.approvedVendorId }
+        ]
+      }
+    : { vendorId: vendorScope.vendorId }
+  const entries = await LedgerEntry.find(ledgerScopeQuery).sort({ occurredAt: 1, _id: 1 })
   const saleRecordIds = entries
     .filter((entry: { referenceType: string, referenceId: string }) => entry.referenceType === 'SaleRecord' && mongoose.Types.ObjectId.isValid(entry.referenceId))
     .map((entry: { referenceId: string }) => new mongoose.Types.ObjectId(entry.referenceId))

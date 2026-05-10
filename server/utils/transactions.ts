@@ -3,9 +3,16 @@ import mongoose, { type ClientSession } from 'mongoose'
 function isTransactionUnsupportedError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
 
+  // Capped collections (like AuditEvent) cannot be written inside transactions.
+  // In that case, rerun the workflow without a transaction.
+  const isCappedCollectionTxnError
+    = message.includes('capped collection')
+      && message.includes('Writes in transactions are not allowed')
+
   return (
     message.includes('Transaction numbers are only allowed on a replica set member or mongos')
     || (message.includes('transaction') && message.includes('not supported'))
+    || isCappedCollectionTxnError
   )
 }
 

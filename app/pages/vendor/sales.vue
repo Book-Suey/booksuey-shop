@@ -20,6 +20,7 @@ interface VendorSale {
 }
 
 const auth = useVendorAuth()
+const hasMounted = ref(false)
 
 const columns = [
   { key: 'soldAt', label: 'Sold At' },
@@ -71,9 +72,15 @@ const { data, pending, error, refresh } = await useAsyncData(
   },
   {
     server: false,
+    immediate: false,
     default: () => ({ sales: [] as VendorSale[] })
   }
 )
+
+onMounted(async () => {
+  hasMounted.value = true
+  await refresh()
+})
 </script>
 
 <template>
@@ -91,13 +98,13 @@ const { data, pending, error, refresh } = await useAsyncData(
     </header>
 
     <AppLoadingState
-      v-if="pending"
+      v-if="hasMounted && pending"
       title="Loading sales"
       description="Fetching your imported sales history."
     />
 
     <AppErrorState
-      v-else-if="error"
+      v-else-if="hasMounted && error"
       title="Unable to load sales"
       :message="
         (error as { statusMessage?: string })?.statusMessage

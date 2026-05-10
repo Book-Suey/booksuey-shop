@@ -3,7 +3,8 @@ import mongoose from 'mongoose'
 
 export interface ISaleRecord {
   _id?: Types.ObjectId
-  vendorId: string
+  vendorId?: string
+  approvedVendorId: string
   sourceBatchId: string
   sourceRowKey: string
   soldAt: Date
@@ -22,7 +23,15 @@ export interface ISaleRecord {
 
 const SaleRecordSchema = new mongoose.Schema<ISaleRecord>(
   {
-    vendorId: { type: String, required: true, index: true },
+    vendorId: { type: String, index: true },
+    approvedVendorId: {
+      type: String,
+      required: true,
+      index: true,
+      default(this: { vendorId?: string }) {
+        return this.vendorId
+      }
+    },
     sourceBatchId: { type: String, required: true, index: true },
     sourceRowKey: { type: String, required: true, unique: true },
     soldAt: { type: Date, required: true },
@@ -46,6 +55,7 @@ const SaleRecordSchema = new mongoose.Schema<ISaleRecord>(
 )
 
 SaleRecordSchema.index({ vendorId: 1, soldAt: -1 })
+SaleRecordSchema.index({ approvedVendorId: 1, soldAt: -1 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const SaleRecord = mongoose.models.SaleRecord || mongoose.model<ISaleRecord>('SaleRecord', SaleRecordSchema) as any

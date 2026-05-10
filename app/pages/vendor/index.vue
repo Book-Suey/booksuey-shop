@@ -41,6 +41,7 @@ interface VendorPayoutRequest {
 }
 
 const auth = useVendorAuth()
+const hasMounted = ref(false)
 
 function formatCurrency(amount: string, currency = 'USD'): string {
   const parsed = Number.parseFloat(amount)
@@ -104,6 +105,7 @@ const { data, pending, error, refresh } = await useAsyncData(
   },
   {
     server: false,
+    immediate: false,
     default: () => ({
       balance: {
         pendingAmount: '0',
@@ -117,6 +119,11 @@ const { data, pending, error, refresh } = await useAsyncData(
     })
   }
 )
+
+onMounted(async () => {
+  hasMounted.value = true
+  await refresh()
+})
 
 const salesColumns = [
   { key: 'soldAt', label: 'Sold At' },
@@ -153,7 +160,7 @@ const payoutColumns = [
           Request payout
         </NuxtLink>
         <NuxtLink
-          to="/vendor/ledger"
+          to="/vendor/balance#ledger"
           class="portal-button portal-button--secondary"
         >
           View full ledger
@@ -162,13 +169,13 @@ const payoutColumns = [
     </header>
 
     <AppLoadingState
-      v-if="pending"
+      v-if="hasMounted && pending"
       title="Loading overview"
       description="Fetching your latest vendor financial data."
     />
 
     <AppErrorState
-      v-else-if="error"
+      v-else-if="hasMounted && error"
       title="Unable to load dashboard"
       :message="
         (error as { statusMessage?: string })?.statusMessage
@@ -247,7 +254,7 @@ const payoutColumns = [
       <article class="vendor-panel">
         <div class="vendor-panel__title">
           <h2>Recent ledger entries</h2>
-          <NuxtLink to="/vendor/ledger">View all</NuxtLink>
+          <NuxtLink to="/vendor/balance#ledger">View all</NuxtLink>
         </div>
         <AppEmptyState
           v-if="data.ledgerEntries.length === 0"

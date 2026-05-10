@@ -2,6 +2,7 @@ import type { Types } from 'mongoose'
 import mongoose from 'mongoose'
 
 export type VendorStatus = 'active' | 'inactive'
+export type VendorPayoutMethod = 'paypal' | 'venmo'
 
 export interface IVendor {
   _id?: Types.ObjectId
@@ -10,6 +11,10 @@ export interface IVendor {
   displayName: string
   email: string
   phone?: string
+  preferredPayoutMethod?: VendorPayoutMethod
+  payoutRecipientName?: string
+  paypalEmail?: string
+  venmoHandle?: string
   passwordHash: string
   status: VendorStatus
   approvedVendorId?: string
@@ -29,6 +34,13 @@ const VendorSchema = new mongoose.Schema<IVendor>(
     displayName: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
     phone: { type: String },
+    preferredPayoutMethod: {
+      type: String,
+      enum: ['paypal', 'venmo']
+    },
+    payoutRecipientName: { type: String },
+    paypalEmail: { type: String, lowercase: true },
+    venmoHandle: { type: String },
     passwordHash: { type: String, required: true },
     status: {
       type: String,

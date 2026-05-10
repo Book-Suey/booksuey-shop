@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { connectToDatabase } from '../../config/database'
 import { SalesImportBatch } from '../../models/SalesImportBatch'
 import { SaleRecord } from '../../models/SaleRecord'
-import { requireVendorId } from '../../utils/vendorContext'
+import { requireVendorScope } from '../../utils/vendorContext'
 
 const salesQuerySchema = z.object({
   sourcePeriod: z.string().min(1).optional(),
@@ -30,7 +30,7 @@ function parseOptionalDate(value: string | undefined, fieldName: string): Date |
 export default defineEventHandler(async (event) => {
   await connectToDatabase()
 
-  const vendorId = requireVendorId(event)
+  const vendorScope = requireVendorScope(event)
   const parsedQuery = salesQuerySchema.safeParse(getQuery(event))
 
   if (!parsedQuery.success) {
@@ -53,11 +53,22 @@ export default defineEventHandler(async (event) => {
     soldAt.$lte = soldAtEnd
   }
 
+  const saleScopeQuery = vendorScope.approvedVendorId
+    ? {
+        $or: [
+          { vendorId: vendorScope.vendorId },
+          { approvedVendorId: vendorScope.approvedVendorId }
+        ]
+      }
+    : { vendorId: vendorScope.vendorId }
+
   const saleQuery = {
-    vendorId,
+    ...saleScopeQuery,
     ...(Object.keys(soldAt).length > 0 ? { soldAt } : {})
   } as {
-    vendorId: string
+    vendorId?: string
+    approvedVendorId?: string
+    $or?: Array<{ vendorId: string } | { approvedVendorId: string }>
     soldAt?: { $gte?: Date, $lte?: Date }
     sourceBatchId?: { $in: string[] }
   }

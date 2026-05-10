@@ -117,7 +117,8 @@ export default defineEventHandler(async (event) => {
   let duplicateRows = parsedCsv.duplicateRows
 
   const acceptedRows = [] as Array<{
-    vendorId: string
+    vendorId?: string
+    approvedVendorId: string
     sourceRowKey: string
     saleOrderId: string
     soldAt: Date
@@ -147,20 +148,22 @@ export default defineEventHandler(async (event) => {
     }
 
     const approvedVendorId = sourceToApprovedVendor.get(normalizedSource)
-    const vendorId = approvedVendorId ? approvedVendorToVendor.get(approvedVendorId) : undefined
 
-    if (!vendorId) {
+    if (!approvedVendorId) {
       unmappedSources.add(row.source)
       rowErrors.push({
         code: 'IMPORT_UNMAPPED_SOURCE',
         rowNumber: row.rowNumber,
         reason: `Unmapped Source: ${row.source}`,
-        hint: 'Ensure Source maps to ApprovedVendor and linked Vendor account'
+        hint: 'Ensure Source maps to an ApprovedVendor entry'
       })
       continue
     }
 
+    const vendorId = approvedVendorToVendor.get(approvedVendorId)
+
     acceptedRows.push({
+      approvedVendorId,
       vendorId,
       sourceRowKey: row.sourceRowKey,
       saleOrderId: row.saleOrderId,
@@ -180,6 +183,7 @@ export default defineEventHandler(async (event) => {
   if (acceptedRows.length > 0) {
     const createdSaleRecords = await SaleRecord.insertMany(acceptedRows.map(row => ({
       vendorId: row.vendorId,
+      approvedVendorId: row.approvedVendorId,
       sourceBatchId: batchId,
       sourceRowKey: row.sourceRowKey,
       soldAt: row.soldAt,
@@ -198,13 +202,15 @@ export default defineEventHandler(async (event) => {
 
     await LedgerEntry.insertMany(createdSaleRecords.map((saleRecord: {
       _id: string
-      vendorId: string
+      vendorId?: string
+      approvedVendorId: string
       soldAt: Date
       cost: { toString(): string }
       credit: { toString(): string }
     }) => ({
       entryId: `ledger_${crypto.randomBytes(8).toString('hex')}`,
       vendorId: saleRecord.vendorId,
+      approvedVendorId: saleRecord.approvedVendorId,
       entryType: 'sale',
       amount: computeLedgerAmount(saleRecord.cost.toString(), saleRecord.credit.toString()),
       currency: 'USD',
@@ -213,7 +219,11 @@ export default defineEventHandler(async (event) => {
       occurredAt: saleRecord.soldAt
     })))
 
-    await recomputeBalanceSnapshotsForVendors(createdSaleRecords.map((saleRecord: { vendorId: string }) => saleRecord.vendorId))
+    await recomputeBalanceSnapshotsForVendors(
+      createdSaleRecords
+        .map((saleRecord: { vendorId?: string }) => saleRecord.vendorId)
+        .filter((vendorId: string | undefined): vendorId is string => Boolean(vendorId))
+    )
   }
 
   await SalesImportBatch.create({

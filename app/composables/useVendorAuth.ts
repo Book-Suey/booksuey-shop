@@ -6,6 +6,10 @@ interface VendorProfile {
   status: 'active' | 'inactive'
   approvedVendorId?: string
   phone?: string
+  preferredPayoutMethod?: 'paypal' | 'venmo'
+  payoutRecipientName?: string
+  paypalEmail?: string
+  venmoHandle?: string
 }
 
 interface LoginResponse {
