@@ -20,15 +20,33 @@ export function getMongooseConfig(): MongooseConfig {
 }
 
 let mongooseConnection: typeof mongoose | null = null
+let mongooseConnectionPromise: Promise<typeof mongoose> | null = null
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
   if (mongooseConnection && mongoose.connection.readyState === 1) {
     return mongooseConnection
   }
 
+  if (mongooseConnectionPromise) {
+    return mongooseConnectionPromise
+  }
+
   const config = getMongooseConfig()
-  mongooseConnection = await mongoose.connect(config.uri, config.options)
-  return mongooseConnection
+
+  mongooseConnectionPromise = mongoose.connect(config.uri, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
+    ...config.options
+  })
+
+  try {
+    mongooseConnection = await mongooseConnectionPromise
+    return mongooseConnection
+  } catch (error) {
+    mongooseConnectionPromise = null
+    mongooseConnection = null
+    throw error
+  }
 }
 
 export function getMongoose(): typeof mongoose {
