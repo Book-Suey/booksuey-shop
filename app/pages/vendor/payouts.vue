@@ -1,186 +1,186 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "vendor-auth",
-  layout: "vendor",
-});
+  middleware: 'vendor-auth',
+  layout: 'vendor'
+})
 
 interface VendorBalance {
-  pendingAmount: string;
-  availableAmount: string;
-  paidAmount: string;
-  asOf: string;
+  pendingAmount: string
+  availableAmount: string
+  paidAmount: string
+  asOf: string
 }
 
 interface VendorPayoutRequest {
-  payoutRequestId: string;
-  amount: string;
-  currency: string;
-  status: string;
-  reviewNote?: string;
-  rejectionReason?: string;
-  requestedAt: string;
+  payoutRequestId: string
+  amount: string
+  currency: string
+  status: string
+  reviewNote?: string
+  rejectionReason?: string
+  requestedAt: string
 }
 
-const auth = useVendorAuth();
-const hasMounted = ref(false);
-const isSubmitting = ref(false);
-const submitError = ref<string | null>(null);
-const successMessage = ref<string | null>(null);
+const auth = useVendorAuth()
+const hasMounted = ref(false)
+const isSubmitting = ref(false)
+const submitError = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
 
 const form = reactive({
-  amount: "" as string | number,
-});
+  amount: '' as string | number
+})
 
 const columns = [
-  { key: "expand", label: "" },
-  { key: "payoutRequestId", label: "Request" },
-  { key: "requestedAt", label: "Requested At" },
-  { key: "amount", label: "Amount" },
-  { key: "status", label: "Status" },
-];
+  { key: 'expand', label: '' },
+  { key: 'payoutRequestId', label: 'Request' },
+  { key: 'requestedAt', label: 'Requested At' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'status', label: 'Status' }
+]
 
 function getPayoutDecisionNote(
-  request: VendorPayoutRequest,
-): { label: string; message: string } | null {
+  request: VendorPayoutRequest
+): { label: string, message: string } | null {
   if (request.rejectionReason?.trim()) {
     return {
-      label: "Rejection reason",
-      message: request.rejectionReason,
-    };
+      label: 'Rejection reason',
+      message: request.rejectionReason
+    }
   }
 
   if (request.reviewNote?.trim()) {
     return {
-      label: "Approval note",
-      message: request.reviewNote,
-    };
+      label: 'Approval note',
+      message: request.reviewNote
+    }
   }
 
-  return null;
+  return null
 }
 
 function hasPayoutDecisionNote(request: VendorPayoutRequest): boolean {
-  return getPayoutDecisionNote(request) !== null;
+  return getPayoutDecisionNote(request) !== null
 }
 
 function toggleExpandedRow(tableRow: {
-  getCanExpand: () => boolean;
-  toggleExpanded: () => void;
+  getCanExpand: () => boolean
+  toggleExpanded: () => void
 }): void {
   if (!tableRow.getCanExpand()) {
-    return;
+    return
   }
 
-  tableRow.toggleExpanded();
+  tableRow.toggleExpanded()
 }
 
-function formatCurrency(amount: string, currency = "USD"): string {
-  const parsed = Number.parseFloat(amount);
+function formatCurrency(amount: string, currency = 'USD'): string {
+  const parsed = Number.parseFloat(amount)
 
   if (Number.isNaN(parsed)) {
-    return amount;
+    return amount
   }
 
-  return parsed.toLocaleString("en-US", {
-    style: "currency",
-    currency,
-  });
+  return parsed.toLocaleString('en-US', {
+    style: 'currency',
+    currency
+  })
 }
 
 function formatDate(value: string): string {
-  const parsed = new Date(value);
+  const parsed = new Date(value)
 
   if (Number.isNaN(parsed.getTime())) {
-    return value;
+    return value
   }
 
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return parsed.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
 }
 
 const { data, pending, error, refresh } = await useAsyncData(
-  "vendor-payouts-page",
+  'vendor-payouts-page',
   async () => {
-    await auth.ensureInitialized();
-    const headers = auth.authHeaders();
+    await auth.ensureInitialized()
+    const headers = auth.authHeaders()
 
     const [balanceResponse, requestsResponse] = await Promise.all([
-      $fetch<{ balance: VendorBalance }>("/api/vendor/balance", {
-        method: "GET",
-        headers,
+      $fetch<{ balance: VendorBalance }>('/api/vendor/balance', {
+        method: 'GET',
+        headers
       }),
       $fetch<{ payoutRequests: VendorPayoutRequest[] }>(
-        "/api/vendor/payout-requests",
+        '/api/vendor/payout-requests',
         {
-          method: "GET",
-          headers,
-        },
-      ),
-    ]);
+          method: 'GET',
+          headers
+        }
+      )
+    ])
 
     return {
       balance: balanceResponse.balance,
-      payoutRequests: requestsResponse.payoutRequests,
-    };
+      payoutRequests: requestsResponse.payoutRequests
+    }
   },
   {
     server: false,
     immediate: false,
     default: () => ({
       balance: {
-        pendingAmount: "0",
-        availableAmount: "0",
-        paidAmount: "0",
-        asOf: new Date().toISOString(),
+        pendingAmount: '0',
+        availableAmount: '0',
+        paidAmount: '0',
+        asOf: new Date().toISOString()
       },
-      payoutRequests: [] as VendorPayoutRequest[],
-    }),
-  },
-);
+      payoutRequests: [] as VendorPayoutRequest[]
+    })
+  }
+)
 
 onMounted(async () => {
-  hasMounted.value = true;
-  await refresh();
-});
+  hasMounted.value = true
+  await refresh()
+})
 
 async function submitPayoutRequest(): Promise<void> {
-  submitError.value = null;
-  successMessage.value = null;
+  submitError.value = null
+  successMessage.value = null
 
-  const normalizedAmount = String(form.amount ?? "").trim();
+  const normalizedAmount = String(form.amount ?? '').trim()
   if (!normalizedAmount) {
-    submitError.value = "Enter an amount to request.";
-    return;
+    submitError.value = 'Enter an amount to request.'
+    return
   }
 
-  isSubmitting.value = true;
+  isSubmitting.value = true
 
   try {
     const response = await $fetch<{
-      payoutRequest: VendorPayoutRequest;
-      balance: VendorBalance;
-    }>("/api/vendor/payout-requests", {
-      method: "POST",
+      payoutRequest: VendorPayoutRequest
+      balance: VendorBalance
+    }>('/api/vendor/payout-requests', {
+      method: 'POST',
       headers: auth.authHeaders(),
       body: {
-        amount: normalizedAmount,
-      },
-    });
+        amount: normalizedAmount
+      }
+    })
 
-    data.value.payoutRequests.unshift(response.payoutRequest);
-    data.value.balance = response.balance;
-    form.amount = "";
-    successMessage.value = "Payout request submitted.";
+    data.value.payoutRequests.unshift(response.payoutRequest)
+    data.value.balance = response.balance
+    form.amount = ''
+    successMessage.value = 'Payout request submitted.'
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage;
-    submitError.value =
-      statusMessage || "Unable to submit payout request right now.";
+      ?.statusMessage
+    submitError.value
+      = statusMessage || 'Unable to submit payout request right now.'
   } finally {
-    isSubmitting.value = false;
+    isSubmitting.value = false
   }
 }
 </script>
@@ -188,8 +188,12 @@ async function submitPayoutRequest(): Promise<void> {
 <template>
   <section class="vendor-page">
     <header class="vendor-page__header">
-      <p class="auth-kicker">Vendor payouts</p>
-      <h1 class="auth-title">Request a payout</h1>
+      <p class="auth-kicker">
+        Vendor payouts
+      </p>
+      <h1 class="auth-title">
+        Request a payout
+      </h1>
       <p class="auth-copy">
         Submit requests against available funds and track payout status history.
       </p>
@@ -205,8 +209,8 @@ async function submitPayoutRequest(): Promise<void> {
       v-else-if="hasMounted && error"
       title="Unable to load payouts"
       :message="
-        (error as { statusMessage?: string })?.statusMessage ||
-        'Payout request data failed to load.'
+        (error as { statusMessage?: string })?.statusMessage
+          || 'Payout request data failed to load.'
       "
       @retry="refresh"
     />
@@ -214,21 +218,27 @@ async function submitPayoutRequest(): Promise<void> {
     <template v-else>
       <section class="vendor-summary-grid">
         <article class="admin-card">
-          <p class="admin-card__label">Available to request</p>
+          <p class="admin-card__label">
+            Available to request
+          </p>
           <p class="admin-card__value">
             {{ formatCurrency(data.balance.availableAmount) }}
           </p>
         </article>
 
         <article class="admin-card">
-          <p class="admin-card__label">Pending</p>
+          <p class="admin-card__label">
+            Pending
+          </p>
           <p class="admin-card__value">
             {{ formatCurrency(data.balance.pendingAmount) }}
           </p>
         </article>
 
         <article class="admin-card">
-          <p class="admin-card__label">Paid</p>
+          <p class="admin-card__label">
+            Paid
+          </p>
           <p class="admin-card__value">
             {{ formatCurrency(data.balance.paidAmount) }}
           </p>
@@ -237,7 +247,10 @@ async function submitPayoutRequest(): Promise<void> {
 
       <article class="vendor-panel">
         <h2>New request</h2>
-        <form class="auth-form" @submit.prevent="submitPayoutRequest">
+        <form
+          class="auth-form"
+          @submit.prevent="submitPayoutRequest"
+        >
           <label>
             <span>Amount (USD)</span>
             <input
@@ -248,14 +261,20 @@ async function submitPayoutRequest(): Promise<void> {
               inputmode="decimal"
               placeholder="0.00"
               required
-            />
+            >
           </label>
 
-          <p v-if="submitError" class="auth-error">
+          <p
+            v-if="submitError"
+            class="auth-error"
+          >
             {{ submitError }}
           </p>
 
-          <p v-if="successMessage" class="auth-success">
+          <p
+            v-if="successMessage"
+            class="auth-success"
+          >
             {{ successMessage }}
           </p>
 
@@ -299,7 +318,7 @@ async function submitPayoutRequest(): Promise<void> {
                   tableRow as {
                     getCanExpand: () => boolean;
                     toggleExpanded: () => void;
-                  },
+                  }
                 )
               "
             >
@@ -309,7 +328,10 @@ async function submitPayoutRequest(): Promise<void> {
                   : "Show note"
               }}
             </button>
-            <span v-else class="vendor-payouts__no-note">-</span>
+            <span
+              v-else
+              class="vendor-payouts__no-note"
+            >-</span>
           </template>
 
           <template #cell:requestedAt="{ row }">

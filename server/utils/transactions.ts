@@ -12,6 +12,7 @@ function isTransactionUnsupportedError(error: unknown): boolean {
   return (
     message.includes('Transaction numbers are only allowed on a replica set member or mongos')
     || (message.includes('transaction') && message.includes('not supported'))
+    || message.includes('does not support retryable writes')
     || isCappedCollectionTxnError
   )
 }

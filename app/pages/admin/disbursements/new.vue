@@ -28,8 +28,7 @@ const successMessage = ref<string | null>(null)
 const payoutRequestId = computed(() => route.query.payoutRequestId as string)
 
 const form = reactive({
-  methodType: 'paypal',
-  providerReferenceId: ''
+  methodType: 'paypal'
 })
 
 if (!payoutRequestId.value) {
@@ -45,12 +44,6 @@ async function submitDisbursement(): Promise<void> {
 
   if (!form.methodType.trim()) {
     submitError.value = 'Select a payment method (PayPal or Venmo).'
-    return
-  }
-
-  if (!form.providerReferenceId.trim()) {
-    submitError.value
-      = 'Enter the provider reference ID from the payment gateway.'
     return
   }
 
@@ -70,15 +63,13 @@ async function submitDisbursement(): Promise<void> {
         body: {
           payoutRequestId: payoutRequestId.value,
           methodType: form.methodType.trim(),
-          providerReferenceId: form.providerReferenceId.trim(),
           idempotencyKey
         }
       }
     )
 
-    successMessage.value = `Disbursement ${result.disbursement.disbursementId} created successfully.`
+    successMessage.value = `Disbursement ${result.disbursement.disbursementId} initiated. Awaiting PayPal confirmation.`
     form.methodType = 'paypal'
-    form.providerReferenceId = ''
 
     setTimeout(() => {
       router.push(`/admin/payout-requests/${payoutRequestId.value}`)
@@ -128,8 +119,8 @@ async function submitDisbursement(): Promise<void> {
       <div>
         <h2>Disbursement details</h2>
         <p class="panel-copy">
-          Specify the payment method and provider reference ID from your payment
-          gateway.
+          Select a payout method to initiate the provider transfer. The provider
+          reference is generated automatically.
         </p>
       </div>
 
@@ -146,16 +137,6 @@ async function submitDisbursement(): Promise<void> {
             <option value="paypal">PayPal</option>
             <option value="venmo">Venmo</option>
           </select>
-        </label>
-
-        <label>
-          <span>Provider reference ID</span>
-          <input
-            v-model="form.providerReferenceId"
-            type="text"
-            placeholder="e.g., txn_1A2B3C4D5E6F7G8H9I..."
-            required
-          >
         </label>
 
         <p

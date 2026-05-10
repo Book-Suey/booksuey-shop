@@ -9,11 +9,16 @@ import { Vendor } from '../../server/models/Vendor'
 import { generateToken, hashPassword } from '../../server/utils/auth'
 
 let mongoServer: MongoMemoryServer
+let fetchMock: ReturnType<typeof vi.fn>
 
 beforeAll(async () => {
   process.env.JWT_SECRET = 'test-secret-key-for-integration-tests'
   process.env.JWT_EXPIRES_IN = '7d'
   process.env.BCRYPT_COST_FACTOR = '12'
+  process.env.PAYPAL_ENVIRONMENT = 'sandbox'
+  process.env.PAYPAL_CLIENT_ID = 'sandbox-client-id'
+  process.env.PAYPAL_CLIENT_SECRET = 'sandbox-client-secret'
+  process.env.PAYPAL_WEBHOOK_ID = 'sandbox-webhook-id'
 
   mongoServer = await MongoMemoryServer.create()
   const uri = mongoServer.getUri()
@@ -31,6 +36,9 @@ beforeAll(async () => {
     error.statusMessage = input.statusMessage
     return error
   })
+
+  fetchMock = vi.fn()
+  vi.stubGlobal('fetch', fetchMock)
 })
 
 afterAll(async () => {
@@ -41,6 +49,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   vi.resetModules()
+  fetchMock.mockReset()
   await Vendor.deleteMany({})
   await PayoutRequest.deleteMany({})
   await PaymentDisbursement.deleteMany({})
@@ -66,6 +75,9 @@ async function seedVendor(vendorId: string): Promise<void> {
     legalName: `${vendorId} Legal Name`,
     displayName: `${vendorId} Display`,
     email: `${vendorId}@example.com`,
+    preferredPayoutMethod: 'paypal',
+    payoutRecipientName: `${vendorId} Recipient`,
+    paypalEmail: `${vendorId}@paypal.example.com`,
     passwordHash: await hashPassword('StrongPass123!'),
     status: 'active'
   })
@@ -272,7 +284,7 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
     expect(auditEvent).toBeDefined()
   })
 
-  it('creates successful paypal disbursement and moves amount to paid', async () => {
+  it('initiates paypal disbursement and keeps payout in disbursing until webhook', async () => {
     await seedVendor('vendor_disburse_paid')
     await seedRequestedPayoutWithReservation({
       payoutRequestId: 'payout_disburse_paid',
@@ -293,13 +305,30 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
 
     const { default: createDisbursement } = await import('../../server/api/admin/disbursements.post')
 
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: 'test_access_token',
+        expires_in: 900
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        batch_header: {
+          payout_batch_id: 'paypal-batch-123',
+          batch_status: 'PENDING'
+        },
+        items: [
+          {
+            payout_item_id: 'item-123',
+            transaction_status: 'PENDING'
+          }
+        ]
+      }), { status: 201 }))
+
     const result = await createDisbursement({
       headers: adminHeaders(),
       body: {
         payoutRequestId: 'payout_disburse_paid',
         methodType: 'paypal',
-        idempotencyKey: 'idem-paid-1',
-        providerReferenceId: 'paypal-ref-123'
+        idempotencyKey: 'idem-paid-1'
       }
     }) as {
       disbursement: { status: string, providerReferenceId: string }
@@ -307,21 +336,21 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
       balance: { pendingAmount: string, paidAmount: string }
     }
 
-    expect(result.disbursement.status).toBe('paid')
-    expect(result.disbursement.providerReferenceId).toBe('paypal-ref-123')
-    expect(result.payoutRequest.status).toBe('paid')
-    expect(result.balance.pendingAmount).toBe('0.00')
-    expect(result.balance.paidAmount).toBe('6.00')
+    expect(result.disbursement.status).toBe('disbursing')
+    expect(result.disbursement.providerReferenceId).toBe('paypal-batch-123')
+    expect(result.payoutRequest.status).toBe('disbursing')
+    expect(result.balance.pendingAmount).toBe('6.00')
+    expect(result.balance.paidAmount).toBe('0.00')
 
     const paidLedgerEntry = await LedgerEntry.findOne({
       entryType: 'paid',
       referenceId: 'payout_disburse_paid'
     })
 
-    expect(paidLedgerEntry).toBeDefined()
+    expect(paidLedgerEntry).toBeNull()
   })
 
-  it('creates failed venmo disbursement and releases reserved balance', async () => {
+  it('marks payout failed and releases balance when provider initiation fails', async () => {
     await seedVendor('vendor_disburse_failed')
 
     await LedgerEntry.create({
@@ -354,27 +383,41 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
 
     const { default: createDisbursement } = await import('../../server/api/admin/disbursements.post')
 
-    const result = await createDisbursement({
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: 'test_access_token',
+        expires_in: 900
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        name: 'UNPROCESSABLE_ENTITY',
+        message: 'Validation error',
+        details: [{ description: 'Processor declined' }]
+      }), { status: 422 }))
+
+    await expect(createDisbursement({
       headers: adminHeaders(),
       body: {
         payoutRequestId: 'payout_disburse_failed',
-        methodType: 'venmo',
-        idempotencyKey: 'idem-failed-1',
-        providerReferenceId: 'venmo-ref-456',
-        outcome: 'failed',
-        failureReason: 'Processor declined'
+        methodType: 'paypal',
+        idempotencyKey: 'idem-failed-1'
       }
-    }) as {
-      disbursement: { status: string, failureReason?: string }
-      payoutRequest: { status: string }
-      balance: { pendingAmount: string, availableAmount: string }
-    }
+    })).rejects.toMatchObject({
+      statusCode: 502
+    })
 
-    expect(result.disbursement.status).toBe('failed')
-    expect(result.disbursement.failureReason).toBe('Processor declined')
-    expect(result.payoutRequest.status).toBe('failed')
-    expect(result.balance.pendingAmount).toBe('0.00')
-    expect(result.balance.availableAmount).toBe('9.00')
+    const updatedPayout = await PayoutRequest.findOne({ payoutRequestId: 'payout_disburse_failed' })
+    expect(updatedPayout?.status).toBe('failed')
+
+    const failedDisbursement = await PaymentDisbursement.findOne({ payoutRequestId: 'payout_disburse_failed' })
+    expect(failedDisbursement?.status).toBe('failed')
+    expect(failedDisbursement?.failureReason).toContain('Processor declined')
+
+    const releaseEntry = await LedgerEntry.findOne({
+      entryType: 'release',
+      referenceId: 'payout_disburse_failed'
+    })
+
+    expect(releaseEntry).toBeDefined()
   })
 
   it('rejects unsupported disbursement method and supports idempotent replay', async () => {
@@ -403,20 +446,36 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
       body: {
         payoutRequestId: 'payout_disburse_misc',
         methodType: 'ach',
-        idempotencyKey: 'idem-unsupported',
-        providerReferenceId: 'unsupported-ref'
+        idempotencyKey: 'idem-unsupported'
       }
     })).rejects.toMatchObject({
       statusCode: 400
     })
+
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: 'test_access_token',
+        expires_in: 900
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        batch_header: {
+          payout_batch_id: 'replay-batch-1',
+          batch_status: 'PENDING'
+        },
+        items: [
+          {
+            payout_item_id: 'replay-item-1',
+            transaction_status: 'PENDING'
+          }
+        ]
+      }), { status: 201 }))
 
     const first = await createDisbursement({
       headers: adminHeaders(),
       body: {
         payoutRequestId: 'payout_disburse_misc',
         methodType: 'paypal',
-        idempotencyKey: 'idem-replay',
-        providerReferenceId: 'replay-ref'
+        idempotencyKey: 'idem-replay'
       }
     }) as { disbursement: { disbursementId: string }, idempotentReplay?: boolean }
 
@@ -425,8 +484,7 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
       body: {
         payoutRequestId: 'payout_disburse_misc',
         methodType: 'paypal',
-        idempotencyKey: 'idem-replay',
-        providerReferenceId: 'replay-ref'
+        idempotencyKey: 'idem-replay'
       }
     }) as { disbursement: { disbursementId: string }, idempotentReplay?: boolean }
 

@@ -8,16 +8,18 @@ import { PayoutRequest } from '../../models/PayoutRequest'
 import { Vendor } from '../../models/Vendor'
 import { recomputeBalanceSnapshot } from '../../utils/balance'
 import { requireAdmin } from '../../utils/adminAuth'
+import { executePayout, mapVendorToPayout } from '../../utils/payoutExecution'
 import { runWithOptionalTransaction } from '../../utils/transactions'
 
 const createDisbursementSchema = z.object({
   payoutRequestId: z.string().trim().min(1),
-  methodType: z.string().trim().min(1),
   idempotencyKey: z.string().trim().min(1).max(200),
-  providerReferenceId: z.string().trim().min(1).max(200),
-  outcome: z.enum(['paid', 'failed']).optional(),
-  failureReason: z.string().trim().min(1).max(500).optional()
+  methodType: z.enum(['paypal', 'venmo']).optional()
 })
+
+function createAuditId(): string {
+  return `audit_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`
+}
 
 export default defineEventHandler(async (event) => {
   const adminIdentity = await requireAdmin(event)
@@ -34,20 +36,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const payload = parsedBody.data
-  if (payload.methodType !== 'paypal' && payload.methodType !== 'venmo') {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'PAYOUT_UNSUPPORTED_METHOD: methodType is not paypal or venmo'
-    })
-  }
-
-  const outcome = payload.outcome ?? 'paid'
-  if (outcome === 'failed' && !payload.failureReason) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'DISBURSEMENT_PROVIDER_FAILURE: Failure reason is required when outcome is failed'
-    })
-  }
 
   const existingDisbursement = await PaymentDisbursement.findOne({
     payoutRequestId: payload.payoutRequestId,
@@ -55,6 +43,15 @@ export default defineEventHandler(async (event) => {
   })
 
   if (existingDisbursement) {
+    const payout = await PayoutRequest.findOne({ payoutRequestId: payload.payoutRequestId })
+    const vendor = payout ? await Vendor.findOne({ vendorId: payout.vendorId }) : null
+    const balance = payout
+      ? await recomputeBalanceSnapshot(
+          payout.vendorId,
+          vendor?.approvedVendorId || payout.vendorId
+        )
+      : null
+
     return {
       idempotentReplay: true,
       disbursement: {
@@ -62,6 +59,7 @@ export default defineEventHandler(async (event) => {
         payoutRequestId: existingDisbursement.payoutRequestId,
         methodType: existingDisbursement.methodType,
         providerReferenceId: existingDisbursement.providerReferenceId,
+        providerItemId: existingDisbursement.providerItemId,
         amount: existingDisbursement.amount.toString(),
         currency: existingDisbursement.currency,
         status: existingDisbursement.status,
@@ -69,11 +67,29 @@ export default defineEventHandler(async (event) => {
         failureReason: existingDisbursement.failureReason,
         createdAt: existingDisbursement.createdAt,
         updatedAt: existingDisbursement.updatedAt
-      }
+      },
+      payoutRequest: payout
+        ? {
+            payoutRequestId: payout.payoutRequestId,
+            status: payout.status,
+            disbursingAt: payout.disbursingAt,
+            paidAt: payout.paidAt,
+            failedAt: payout.failedAt,
+            updatedAt: payout.updatedAt
+          }
+        : null,
+      balance: balance
+        ? {
+            pendingAmount: balance.pendingAmount,
+            availableAmount: balance.availableAmount,
+            paidAmount: balance.paidAmount,
+            asOf: balance.asOf
+          }
+        : null
     }
   }
 
-  const result = await runWithOptionalTransaction(async (session) => {
+  const initialized = await runWithOptionalTransaction(async (session) => {
     const payoutRequest = await PayoutRequest.findOne(
       { payoutRequestId: payload.payoutRequestId },
       undefined,
@@ -95,8 +111,19 @@ export default defineEventHandler(async (event) => {
     }
 
     const vendor = await Vendor.findOne({ vendorId: payoutRequest.vendorId }, undefined, { session })
-    const approvedVendorId = vendor?.approvedVendorId || payoutRequest.vendorId
+    if (!vendor) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Vendor not found for payout request'
+      })
+    }
 
+    const resolvedMethod = mapVendorToPayout({
+      vendor,
+      methodTypeOverride: payload.methodType
+    }).type
+
+    const approvedVendorId = vendor.approvedVendorId || payoutRequest.vendorId
     const disbursingAt = new Date()
 
     const transitionedToDisbursing = await PayoutRequest.findOneAndUpdate(
@@ -123,8 +150,8 @@ export default defineEventHandler(async (event) => {
       disbursementId,
       payoutRequestId: payload.payoutRequestId,
       idempotencyKey: payload.idempotencyKey,
-      methodType: payload.methodType,
-      providerReferenceId: payload.providerReferenceId,
+      methodType: resolvedMethod,
+      providerReferenceId: `pending_${payload.idempotencyKey}`,
       amount: payoutRequest.amount.toString(),
       currency: payoutRequest.currency,
       status: 'disbursing',
@@ -132,7 +159,7 @@ export default defineEventHandler(async (event) => {
     }], { session })
 
     await AuditEvent.create([{
-      auditEventId: `audit_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      auditEventId: createAuditId(),
       actorId: adminIdentity.actorId,
       actorRole: adminIdentity.actorRole,
       action: 'disbursement_created',
@@ -140,159 +167,156 @@ export default defineEventHandler(async (event) => {
       entityId: disbursementId,
       after: {
         payoutRequestId: payload.payoutRequestId,
-        methodType: payload.methodType,
+        methodType: resolvedMethod,
         status: 'disbursing'
       },
       createdAt: disbursingAt
     }], { session })
 
-    const settledAt = new Date()
+    return {
+      disbursementId,
+      payoutRequestId: payoutRequest.payoutRequestId,
+      vendorId: payoutRequest.vendorId,
+      amount: payoutRequest.amount.toString(),
+      currency: payoutRequest.currency,
+      approvedVendorId,
+      methodType: resolvedMethod,
+      vendor: {
+        vendorId: vendor.vendorId,
+        displayName: vendor.displayName,
+        legalName: vendor.legalName,
+        preferredPayoutMethod: vendor.preferredPayoutMethod,
+        paypalEmail: vendor.paypalEmail,
+        venmoHandle: vendor.venmoHandle
+      }
+    }
+  })
 
-    if (outcome === 'paid') {
-      await LedgerEntry.create([{
-        entryId: `ledger_paid_${payload.payoutRequestId}`,
-        vendorId: payoutRequest.vendorId,
-        approvedVendorId,
-        entryType: 'paid',
-        amount: payoutRequest.amount.toString(),
-        currency: 'USD',
-        referenceType: 'PayoutRequest',
-        referenceId: payload.payoutRequestId,
-        occurredAt: settledAt
-      }], { session })
+  try {
+    const execution = await executePayout({
+      disbursementId: initialized.disbursementId,
+      idempotencyKey: payload.idempotencyKey,
+      amount: initialized.amount,
+      currency: initialized.currency,
+      vendor: initialized.vendor,
+      methodTypeOverride: payload.methodType
+    })
+
+    await PaymentDisbursement.updateOne(
+      { disbursementId: initialized.disbursementId },
+      {
+        $set: {
+          methodType: execution.methodType,
+          providerReferenceId: execution.paypalBatchId,
+          providerItemId: execution.providerItemId || execution.providerTransferId
+        }
+      }
+    )
+  } catch (error: unknown) {
+    const failureReason = error instanceof Error
+      ? error.message.slice(0, 500)
+      : 'Provider disbursement initiation failed'
+
+    await runWithOptionalTransaction(async (session) => {
+      await PaymentDisbursement.updateOne(
+        { disbursementId: initialized.disbursementId },
+        {
+          $set: {
+            status: 'failed',
+            failureReason,
+            disbursedAt: new Date()
+          }
+        },
+        { session }
+      )
 
       await PayoutRequest.updateOne(
-        { payoutRequestId: payload.payoutRequestId, status: 'disbursing' },
+        { payoutRequestId: initialized.payoutRequestId, status: 'disbursing' },
         {
           $set: {
-            status: 'paid',
-            paidAt: settledAt
+            status: 'failed',
+            failedAt: new Date()
           }
         },
         { session }
       )
 
-      await PaymentDisbursement.updateOne(
-        { disbursementId },
-        {
-          $set: {
-            status: 'paid',
-            disbursedAt: settledAt
-          }
-        },
-        { session }
-      )
-
-      await AuditEvent.create([{
-        auditEventId: `audit_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        actorId: adminIdentity.actorId,
-        actorRole: adminIdentity.actorRole,
-        action: 'disbursement_completed',
-        entityType: 'PaymentDisbursement',
-        entityId: disbursementId,
-        after: {
-          payoutRequestId: payload.payoutRequestId,
-          status: 'paid',
-          disbursedAt: settledAt
-        },
-        createdAt: settledAt
-      }], { session })
-    } else {
       await LedgerEntry.create([{
-        entryId: `ledger_release_${payload.payoutRequestId}_failed`,
-        vendorId: payoutRequest.vendorId,
-        approvedVendorId,
+        entryId: `ledger_release_${initialized.payoutRequestId}_failed`,
+        vendorId: initialized.vendorId,
+        approvedVendorId: initialized.approvedVendorId,
         entryType: 'release',
-        amount: payoutRequest.amount.toString(),
-        currency: 'USD',
+        amount: initialized.amount,
+        currency: initialized.currency,
         referenceType: 'PayoutRequest',
-        referenceId: payload.payoutRequestId,
-        occurredAt: settledAt
+        referenceId: initialized.payoutRequestId,
+        occurredAt: new Date()
       }], { session })
 
-      await PayoutRequest.updateOne(
-        { payoutRequestId: payload.payoutRequestId, status: 'disbursing' },
-        {
-          $set: {
-            status: 'failed',
-            failedAt: settledAt
-          }
-        },
-        { session }
-      )
-
-      await PaymentDisbursement.updateOne(
-        { disbursementId },
-        {
-          $set: {
-            status: 'failed',
-            disbursedAt: settledAt,
-            failureReason: payload.failureReason
-          }
-        },
-        { session }
-      )
-
       await AuditEvent.create([{
-        auditEventId: `audit_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        auditEventId: createAuditId(),
         actorId: adminIdentity.actorId,
         actorRole: adminIdentity.actorRole,
         action: 'disbursement_failed',
         entityType: 'PaymentDisbursement',
-        entityId: disbursementId,
+        entityId: initialized.disbursementId,
         after: {
-          payoutRequestId: payload.payoutRequestId,
+          payoutRequestId: initialized.payoutRequestId,
           status: 'failed',
-          disbursedAt: settledAt,
-          failureReason: payload.failureReason
+          failureReason
         },
-        createdAt: settledAt
+        createdAt: new Date()
       }], { session })
-    }
+    })
 
-    const finalDisbursement = await PaymentDisbursement.findOne({ disbursementId }, undefined, { session })
-    const finalPayout = await PayoutRequest.findOne({ payoutRequestId: payload.payoutRequestId }, undefined, { session })
+    await recomputeBalanceSnapshot(
+      initialized.vendorId,
+      initialized.approvedVendorId
+    )
 
-    if (!finalDisbursement || !finalPayout) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: 'Disbursement could not be finalized'
-      })
-    }
+    throw createError({
+      statusCode: 502,
+      statusMessage: `DISBURSEMENT_PROVIDER_FAILURE: ${failureReason}`
+    })
+  }
 
-    return {
-      disbursement: finalDisbursement,
-      payoutRequest: finalPayout,
-      approvedVendorId
-    }
-  })
+  const finalDisbursement = await PaymentDisbursement.findOne({ disbursementId: initialized.disbursementId })
+  const finalPayout = await PayoutRequest.findOne({ payoutRequestId: payload.payoutRequestId })
+
+  if (!finalDisbursement || !finalPayout) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Disbursement could not be finalized'
+    })
+  }
 
   const balance = await recomputeBalanceSnapshot(
-    result.payoutRequest.vendorId,
-    result.approvedVendorId
+    initialized.vendorId,
+    initialized.approvedVendorId
   )
 
   return {
     disbursement: {
-      disbursementId: result.disbursement.disbursementId,
-      payoutRequestId: result.disbursement.payoutRequestId,
-      methodType: result.disbursement.methodType,
-      providerReferenceId: result.disbursement.providerReferenceId,
-      amount: result.disbursement.amount.toString(),
-      currency: result.disbursement.currency,
-      status: result.disbursement.status,
-      disbursedAt: result.disbursement.disbursedAt,
-      failureReason: result.disbursement.failureReason,
-      createdAt: result.disbursement.createdAt,
-      updatedAt: result.disbursement.updatedAt
+      disbursementId: finalDisbursement.disbursementId,
+      payoutRequestId: finalDisbursement.payoutRequestId,
+      methodType: finalDisbursement.methodType,
+      providerReferenceId: finalDisbursement.providerReferenceId,
+      providerItemId: finalDisbursement.providerItemId,
+      amount: finalDisbursement.amount.toString(),
+      currency: finalDisbursement.currency,
+      status: finalDisbursement.status,
+      disbursedAt: finalDisbursement.disbursedAt,
+      failureReason: finalDisbursement.failureReason,
+      createdAt: finalDisbursement.createdAt,
+      updatedAt: finalDisbursement.updatedAt
     },
     payoutRequest: {
-      payoutRequestId: result.payoutRequest.payoutRequestId,
-      status: result.payoutRequest.status,
-      disbursingAt: result.payoutRequest.disbursingAt,
-      paidAt: result.payoutRequest.paidAt,
-      failedAt: result.payoutRequest.failedAt,
-      updatedAt: result.payoutRequest.updatedAt
+      payoutRequestId: finalPayout.payoutRequestId,
+      status: finalPayout.status,
+      disbursingAt: finalPayout.disbursingAt,
+      paidAt: finalPayout.paidAt,
+      failedAt: finalPayout.failedAt,
+      updatedAt: finalPayout.updatedAt
     },
     balance: {
       pendingAmount: balance.pendingAmount,

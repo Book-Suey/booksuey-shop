@@ -26,6 +26,9 @@ interface AdminPayoutRequest {
 }
 
 const auth = useAdminAuth()
+const isReconciling = ref(false)
+const reconcileMessage = ref<string | null>(null)
+const reconcileError = ref<string | null>(null)
 
 const filters = reactive({
   status: 'active',
@@ -130,6 +133,37 @@ const metrics = computed(() => {
     disbursing: payouts.filter(p => p.status === 'disbursing').length
   }
 })
+
+async function reconcileDisbursingPayouts(): Promise<void> {
+  reconcileMessage.value = null
+  reconcileError.value = null
+  isReconciling.value = true
+
+  try {
+    await auth.ensureInitialized()
+
+    const result = await $fetch<{
+      reconciledCount: number
+      updatedCount: number
+    }>('/api/admin/payout-recovery', {
+      method: 'POST',
+      headers: auth.authHeaders(),
+      body: {
+        action: 'reconcile',
+        limit: 100
+      }
+    })
+
+    reconcileMessage.value = `Reconciled ${result.reconciledCount} disbursing payouts (${result.updatedCount} updated).`
+    await refresh()
+  } catch (error: unknown) {
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage
+    reconcileError.value
+      = statusMessage || 'Unable to reconcile disbursing payouts right now.'
+  } finally {
+    isReconciling.value = false
+  }
+}
 </script>
 
 <template>
@@ -147,6 +181,16 @@ const metrics = computed(() => {
       </p>
 
       <div class="vendor-actions">
+        <button
+          type="button"
+          class="portal-button portal-button--primary"
+          :disabled="isReconciling"
+          @click="reconcileDisbursingPayouts"
+        >
+          {{
+            isReconciling ? "Reconciling..." : "Reconcile disbursing payouts"
+          }}
+        </button>
         <NuxtLink
           to="/admin/payout-requests/payout-failures"
           class="portal-button portal-button--secondary"
@@ -160,6 +204,19 @@ const metrics = computed(() => {
           View payout audit trail
         </NuxtLink>
       </div>
+
+      <p
+        v-if="reconcileMessage"
+        class="auth-success"
+      >
+        {{ reconcileMessage }}
+      </p>
+      <p
+        v-if="reconcileError"
+        class="auth-error"
+      >
+        {{ reconcileError }}
+      </p>
 
       <div class="admin-cards">
         <article class="admin-card">

@@ -33,6 +33,10 @@ interface PayoutFailure {
 }
 
 const auth = useAdminAuth()
+const recheckingPayoutId = ref<string | null>(null)
+const recheckMessage = ref<string | null>(null)
+const recheckError = ref<string | null>(null)
+const lastRecheckAtByPayoutId = ref<Record<string, string>>({})
 
 const filters = reactive({
   vendorId: '',
@@ -197,6 +201,51 @@ const csvFileName = computed(() => {
   const dateStamp = new Date().toISOString().slice(0, 10)
   return `payout-failures-${dateStamp}.csv`
 })
+
+async function recheckPayoutProviderStatus(
+  payoutRequestId: string
+): Promise<void> {
+  recheckMessage.value = null
+  recheckError.value = null
+  recheckingPayoutId.value = payoutRequestId
+
+  try {
+    await auth.ensureInitialized()
+
+    const result = await $fetch<{
+      reconciledCount: number
+      updatedCount: number
+    }>('/api/admin/payout-recovery', {
+      method: 'POST',
+      headers: auth.authHeaders(),
+      body: {
+        action: 'reconcile',
+        payoutRequestId,
+        limit: 10
+      }
+    })
+
+    if (result.reconciledCount === 0) {
+      recheckMessage.value
+        = 'No disbursing disbursement found for this payout request.'
+    } else {
+      recheckMessage.value = `Provider recheck complete for ${payoutRequestId} (${result.updatedCount} updates applied).`
+    }
+
+    lastRecheckAtByPayoutId.value = {
+      ...lastRecheckAtByPayoutId.value,
+      [payoutRequestId]: new Date().toISOString()
+    }
+
+    await refresh()
+  } catch (error: unknown) {
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage
+    recheckError.value
+      = statusMessage || 'Unable to recheck provider status right now.'
+  } finally {
+    recheckingPayoutId.value = null
+  }
+}
 </script>
 
 <template>
@@ -327,6 +376,19 @@ const csvFileName = computed(() => {
     >
       <h2>Failed payouts</h2>
 
+      <p
+        v-if="recheckMessage"
+        class="auth-success"
+      >
+        {{ recheckMessage }}
+      </p>
+      <p
+        v-if="recheckError"
+        class="auth-error"
+      >
+        {{ recheckError }}
+      </p>
+
       <AppDataTable
         :columns="columns"
         :rows="data.payoutFailures"
@@ -353,9 +415,7 @@ const csvFileName = computed(() => {
               formatCurrency(row.reconciliation.expectedReleaseAmount as string)
             }}
             expected /
-            {{
-              formatCurrency(row.reconciliation.releasedAmount as string)
-            }}
+            {{ formatCurrency(row.reconciliation.releasedAmount as string) }}
             released
           </p>
           <AppStatusBadge
@@ -366,11 +426,44 @@ const csvFileName = computed(() => {
         </template>
 
         <template #cell:actions="{ row }">
-          <NuxtLink
-            :to="`/admin/payout-requests/${row.payoutRequestId as string}`"
-          >
-            Open request
-          </NuxtLink>
+          <div class="vendor-actions">
+            <NuxtLink
+              :to="`/admin/payout-requests/${row.payoutRequestId as string}`"
+            >
+              Open request
+            </NuxtLink>
+
+            <button
+              type="button"
+              class="portal-button portal-button--secondary"
+              :disabled="
+                recheckingPayoutId === (row.payoutRequestId as string)
+                  || (row.disbursement as PayoutFailure['disbursement'])?.status
+                    !== 'disbursing'
+              "
+              @click="
+                recheckPayoutProviderStatus(row.payoutRequestId as string)
+              "
+            >
+              {{
+                recheckingPayoutId === (row.payoutRequestId as string)
+                  ? "Rechecking..."
+                  : "Recheck provider"
+              }}
+            </button>
+
+            <p
+              v-if="lastRecheckAtByPayoutId[row.payoutRequestId as string]"
+              class="panel-copy"
+            >
+              Last recheck:
+              {{
+                formatDate(
+                  lastRecheckAtByPayoutId[row.payoutRequestId as string]
+                )
+              }}
+            </p>
+          </div>
         </template>
       </AppDataTable>
     </article>
