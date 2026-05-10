@@ -491,4 +491,73 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
     expect(second.idempotentReplay).toBe(true)
     expect(second.disbursement.disbursementId).toBe(first.disbursement.disbursementId)
   })
+
+  it('returns existing disbursing disbursement for retry attempts with new idempotency key', async () => {
+    await seedVendor('vendor_disburse_retry_live')
+    await seedRequestedPayoutWithReservation({
+      payoutRequestId: 'payout_disburse_retry_live',
+      vendorId: 'vendor_disburse_retry_live',
+      amount: '5.50',
+      requestedAt: new Date('2026-05-06T09:00:00.000Z')
+    })
+
+    await PayoutRequest.updateOne(
+      { payoutRequestId: 'payout_disburse_retry_live' },
+      {
+        $set: {
+          status: 'approved',
+          approvedAt: new Date('2026-05-06T09:10:00.000Z')
+        }
+      }
+    )
+
+    const { default: createDisbursement } = await import('../../server/api/admin/disbursements.post')
+
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: 'test_access_token',
+        expires_in: 900
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        batch_header: {
+          payout_batch_id: 'retry-live-batch-1',
+          batch_status: 'PENDING'
+        },
+        items: [
+          {
+            payout_item_id: 'retry-live-item-1',
+            transaction_status: 'PENDING'
+          }
+        ]
+      }), { status: 201 }))
+
+    const first = await createDisbursement({
+      headers: adminHeaders(),
+      body: {
+        payoutRequestId: 'payout_disburse_retry_live',
+        methodType: 'paypal',
+        idempotencyKey: 'idem-retry-live-1'
+      }
+    }) as { disbursement: { disbursementId: string, status: string } }
+
+    const second = await createDisbursement({
+      headers: adminHeaders(),
+      body: {
+        payoutRequestId: 'payout_disburse_retry_live',
+        methodType: 'paypal',
+        idempotencyKey: 'idem-retry-live-2'
+      }
+    }) as {
+      alreadyInProgress?: boolean
+      disbursement: { disbursementId: string, status: string }
+      payoutRequest: { status: string }
+    }
+
+    expect(first.disbursement.status).toBe('disbursing')
+    expect(second.alreadyInProgress).toBe(true)
+    expect(second.disbursement.disbursementId).toBe(first.disbursement.disbursementId)
+    expect(second.disbursement.status).toBe('disbursing')
+    expect(second.payoutRequest.status).toBe('disbursing')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
 })

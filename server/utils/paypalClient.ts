@@ -177,6 +177,8 @@ export async function createBatchPayout(input: CreateBatchPayoutInput): Promise<
   const responseBody = await parseResponseBody(response) as {
     name?: string
     message?: string
+    debug_id?: string
+    information_link?: string
     details?: Array<{ issue?: string, description?: string }>
     batch_header?: { payout_batch_id?: string, batch_status?: string }
     items?: Array<{
@@ -189,9 +191,22 @@ export async function createBatchPayout(input: CreateBatchPayoutInput): Promise<
 
   if (!response.ok || !responseBody?.batch_header?.payout_batch_id) {
     const details = responseBody?.details?.map(detail => detail.description || detail.issue).filter(Boolean).join('; ')
+
+    const debugIdSuffix = responseBody?.debug_id ? ` | debug_id=${responseBody.debug_id}` : ''
+    const informationLinkSuffix = responseBody?.information_link
+      ? ` | info=${responseBody.information_link}`
+      : ''
+
+    if (response.status === 403 && responseBody?.name === 'AUTHORIZATION_ERROR') {
+      throw createPayPalError(
+        502,
+        `PAYPAL_PAYOUT_AUTHORIZATION_FAILED: PayPal app or account is not authorized for Payouts in ${config.environment}${debugIdSuffix}${informationLinkSuffix}`
+      )
+    }
+
     throw createPayPalError(
       502,
-      `PAYPAL_PAYOUT_FAILED: ${details || responseBody?.message || responseBody?.name || stringifyErrorBody(responseBody)}`
+      `PAYPAL_PAYOUT_FAILED: ${details || responseBody?.message || responseBody?.name || stringifyErrorBody(responseBody)}${debugIdSuffix}${informationLinkSuffix}`
     )
   }
 

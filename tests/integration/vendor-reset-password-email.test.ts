@@ -120,4 +120,48 @@ describe('Vendor Reset Password Email Flow', () => {
     })
     expect(auditEvent).toBeDefined()
   })
+
+  it('logs a warning when email delivery is skipped', async () => {
+    const sendResetEmailMock = vi.fn().mockResolvedValue({
+      delivered: false,
+      skippedReason: 'Mailgun is not configured'
+    })
+
+    vi.doMock('../../server/utils/email', () => ({
+      sendVendorPasswordResetEmail: sendResetEmailMock
+    }))
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await Vendor.create({
+      vendorId: 'vendor_reset_3',
+      legalName: 'Vendor Reset Three',
+      displayName: 'Reset Three',
+      email: 'reset-three@example.com',
+      passwordHash: 'hash',
+      status: 'active'
+    })
+
+    const { default: requestReset } = await import('../../server/api/vendor/reset-password.post')
+
+    const result = await requestReset({
+      body: {
+        email: 'reset-three@example.com'
+      }
+    }) as { message: string, resetToken?: string }
+
+    expect(result.message).toBe('If the email exists, a reset link has been sent.')
+    expect(result.resetToken).toBeDefined()
+    expect(sendResetEmailMock).toHaveBeenCalledTimes(1)
+    expect(warnSpy).toHaveBeenCalledWith('Password reset email was not delivered', {
+      vendorId: 'vendor_reset_3',
+      reason: 'Mailgun is not configured'
+    })
+
+    const auditEvent = await AuditEvent.findOne({
+      action: 'password_reset_requested',
+      entityId: 'vendor_reset_3'
+    })
+    expect(auditEvent).toBeDefined()
+  })
 })

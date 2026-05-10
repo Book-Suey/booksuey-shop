@@ -5,6 +5,8 @@ definePageMeta({
 })
 
 interface DisbursementResponse {
+  idempotentReplay?: boolean
+  alreadyInProgress?: boolean
   disbursement: {
     disbursementId: string
     payoutRequestId: string
@@ -68,7 +70,12 @@ async function submitDisbursement(): Promise<void> {
       }
     )
 
-    successMessage.value = `Disbursement ${result.disbursement.disbursementId} initiated. Awaiting PayPal confirmation.`
+    if (result.alreadyInProgress) {
+      successMessage.value = `Disbursement ${result.disbursement.disbursementId} is already in progress. Awaiting PayPal confirmation.`
+    } else {
+      successMessage.value = `Disbursement ${result.disbursement.disbursementId} initiated. Awaiting PayPal confirmation.`
+    }
+
     form.methodType = 'paypal'
 
     setTimeout(() => {
@@ -76,8 +83,14 @@ async function submitDisbursement(): Promise<void> {
     }, 1000)
   } catch (error: unknown) {
     const statusMessage = (error as { statusMessage?: string })?.statusMessage
-    submitError.value
-      = statusMessage || 'Unable to create disbursement right now.'
+
+    if (statusMessage?.includes('PAYOUT_INVALID_STATE_TRANSITION')) {
+      submitError.value
+        = 'This payout request is no longer in approved status. Refresh the request page to see the latest status.'
+    } else {
+      submitError.value
+        = statusMessage || 'Unable to create disbursement right now.'
+    }
   } finally {
     isSubmitting.value = false
   }

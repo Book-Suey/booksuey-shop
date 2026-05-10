@@ -44,12 +44,19 @@ export default defineEventHandler(async (event) => {
   const resetPath = `/reset-password?token=${resetToken}`
 
   try {
-    await sendVendorPasswordResetEmail({
+    const deliveryResult = await sendVendorPasswordResetEmail({
       recipientEmail: vendor.email,
       recipientName: vendor.displayName || vendor.legalName,
       resetPath,
       expiresAt: resetExpires
     })
+
+    if (!deliveryResult.delivered) {
+      console.warn('Password reset email was not delivered', {
+        vendorId: vendor.vendorId,
+        reason: deliveryResult.skippedReason ?? 'Unknown reason'
+      })
+    }
   } catch (emailError: unknown) {
     console.warn('Password reset email delivery failed', emailError)
   }

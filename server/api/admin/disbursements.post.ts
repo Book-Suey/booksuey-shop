@@ -21,6 +21,72 @@ function createAuditId(): string {
   return `audit_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`
 }
 
+async function buildExistingDisbursementResponse(input: {
+  existingDisbursement: {
+    disbursementId: string
+    payoutRequestId: string
+    methodType: string
+    providerReferenceId: string
+    providerItemId?: string
+    amount: { toString: () => string }
+    currency: string
+    status: string
+    disbursedAt?: Date
+    failureReason?: string
+    createdAt: Date
+    updatedAt: Date
+  }
+  payoutRequestId: string
+  idempotentReplay?: boolean
+  alreadyInProgress?: boolean
+}) {
+  const payout = await PayoutRequest.findOne({ payoutRequestId: input.payoutRequestId })
+  const vendor = payout ? await Vendor.findOne({ vendorId: payout.vendorId }) : null
+  const balance = payout
+    ? await recomputeBalanceSnapshot(
+        payout.vendorId,
+        vendor?.approvedVendorId || payout.vendorId
+      )
+    : null
+
+  return {
+    idempotentReplay: !!input.idempotentReplay,
+    alreadyInProgress: !!input.alreadyInProgress,
+    disbursement: {
+      disbursementId: input.existingDisbursement.disbursementId,
+      payoutRequestId: input.existingDisbursement.payoutRequestId,
+      methodType: input.existingDisbursement.methodType,
+      providerReferenceId: input.existingDisbursement.providerReferenceId,
+      providerItemId: input.existingDisbursement.providerItemId,
+      amount: input.existingDisbursement.amount.toString(),
+      currency: input.existingDisbursement.currency,
+      status: input.existingDisbursement.status,
+      disbursedAt: input.existingDisbursement.disbursedAt,
+      failureReason: input.existingDisbursement.failureReason,
+      createdAt: input.existingDisbursement.createdAt,
+      updatedAt: input.existingDisbursement.updatedAt
+    },
+    payoutRequest: payout
+      ? {
+          payoutRequestId: payout.payoutRequestId,
+          status: payout.status,
+          disbursingAt: payout.disbursingAt,
+          paidAt: payout.paidAt,
+          failedAt: payout.failedAt,
+          updatedAt: payout.updatedAt
+        }
+      : null,
+    balance: balance
+      ? {
+          pendingAmount: balance.pendingAmount,
+          availableAmount: balance.availableAmount,
+          paidAmount: balance.paidAmount,
+          asOf: balance.asOf
+        }
+      : null
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const adminIdentity = await requireAdmin(event)
   await connectToDatabase()
@@ -43,49 +109,30 @@ export default defineEventHandler(async (event) => {
   })
 
   if (existingDisbursement) {
-    const payout = await PayoutRequest.findOne({ payoutRequestId: payload.payoutRequestId })
-    const vendor = payout ? await Vendor.findOne({ vendorId: payout.vendorId }) : null
-    const balance = payout
-      ? await recomputeBalanceSnapshot(
-          payout.vendorId,
-          vendor?.approvedVendorId || payout.vendorId
-        )
-      : null
+    return await buildExistingDisbursementResponse({
+      existingDisbursement,
+      payoutRequestId: payload.payoutRequestId,
+      idempotentReplay: true
+    })
+  }
 
-    return {
-      idempotentReplay: true,
-      disbursement: {
-        disbursementId: existingDisbursement.disbursementId,
-        payoutRequestId: existingDisbursement.payoutRequestId,
-        methodType: existingDisbursement.methodType,
-        providerReferenceId: existingDisbursement.providerReferenceId,
-        providerItemId: existingDisbursement.providerItemId,
-        amount: existingDisbursement.amount.toString(),
-        currency: existingDisbursement.currency,
-        status: existingDisbursement.status,
-        disbursedAt: existingDisbursement.disbursedAt,
-        failureReason: existingDisbursement.failureReason,
-        createdAt: existingDisbursement.createdAt,
-        updatedAt: existingDisbursement.updatedAt
-      },
-      payoutRequest: payout
-        ? {
-            payoutRequestId: payout.payoutRequestId,
-            status: payout.status,
-            disbursingAt: payout.disbursingAt,
-            paidAt: payout.paidAt,
-            failedAt: payout.failedAt,
-            updatedAt: payout.updatedAt
-          }
-        : null,
-      balance: balance
-        ? {
-            pendingAmount: balance.pendingAmount,
-            availableAmount: balance.availableAmount,
-            paidAmount: balance.paidAmount,
-            asOf: balance.asOf
-          }
-        : null
+  const inProgressPayout = await PayoutRequest.findOne({
+    payoutRequestId: payload.payoutRequestId,
+    status: 'disbursing'
+  })
+
+  if (inProgressPayout) {
+    const inProgressDisbursement = await PaymentDisbursement.findOne({
+      payoutRequestId: payload.payoutRequestId,
+      status: 'disbursing'
+    }).sort({ createdAt: -1 })
+
+    if (inProgressDisbursement) {
+      return await buildExistingDisbursementResponse({
+        existingDisbursement: inProgressDisbursement,
+        payoutRequestId: payload.payoutRequestId,
+        alreadyInProgress: true
+      })
     }
   }
 
