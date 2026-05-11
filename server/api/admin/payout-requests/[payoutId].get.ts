@@ -44,6 +44,13 @@ export default defineEventHandler(async (event) => {
       failedAt: payoutRequest.failedAt,
       createdAt: payoutRequest.createdAt,
       updatedAt: payoutRequest.updatedAt
-    }
+    },
+    vendor: vendor
+      ? {
+          preferredPayoutMethod: vendor.preferredPayoutMethod,
+          paypalEmail: vendor.paypalEmail,
+          venmoHandle: vendor.venmoHandle
+        }
+      : null
   }
 })

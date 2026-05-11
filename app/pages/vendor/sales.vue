@@ -124,7 +124,14 @@ onMounted(async () => {
         :columns="columns"
         :rows="data.sales"
         :row-key="(row) => row.saleRecordId"
-        :stack-on-mobile="true"
+        :mobile-columns="[
+          'soldAt',
+          'title',
+          'quantity',
+          'grossAmount',
+          'commissionAmount',
+          'sourcePeriod'
+        ]"
       >
         <template #cell:soldAt="{ row }">
           {{ formatDate(row.soldAt as string) }}

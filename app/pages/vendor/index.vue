@@ -24,11 +24,13 @@ interface VendorLedgerEntry {
   entryType: string
   amount: string
   balanceImpact: string
+  balanceAfter: string
   currency: string
   occurredAt: string
-  reference: {
-    referenceType: string
-    referenceId: string
+  description?: string
+  sale?: {
+    soldAt: string
+    title: string
   }
 }
 
@@ -70,6 +72,17 @@ function formatDate(value: string): string {
   })
 }
 
+function formatLedgerEntryType(entryType: string): string {
+  const labels: Record<string, string> = {
+    sale: 'Sale Posted',
+    reservation: 'Payout Reserved',
+    release: 'Payout Reversed',
+    paid: 'Payout Paid'
+  }
+
+  return labels[entryType] || entryType
+}
+
 const { data, pending, error, refresh } = await useAsyncData(
   'vendor-overview-dashboard',
   async () => {
@@ -99,7 +112,7 @@ const { data, pending, error, refresh } = await useAsyncData(
     return {
       balance: balanceResponse.balance,
       sales: salesResponse.sales.slice(0, 5),
-      ledgerEntries: ledgerResponse.ledgerEntries.slice(-5).reverse(),
+      ledgerEntries: ledgerResponse.ledgerEntries.slice(0, 5),
       payoutRequests: payoutsResponse.payoutRequests.slice(0, 5)
     }
   },
@@ -269,17 +282,37 @@ const payoutColumns = [
           >
             <div>
               <p class="vendor-feed__title">
-                {{ entry.entryType }}
+                {{ formatLedgerEntryType(entry.entryType) }}
               </p>
               <p class="vendor-feed__meta">
-                {{ entry.reference.referenceType }} •
-                {{ entry.reference.referenceId }}
+                {{ formatDate(entry.occurredAt) }}
+              </p>
+              <p
+                v-if="entry.sale"
+                class="vendor-feed__meta"
+              >
+                {{ entry.sale.title }} • {{ formatDate(entry.sale.soldAt) }}
+              </p>
+              <p
+                v-if="entry.description"
+                class="vendor-feed__meta"
+              >
+                {{ entry.description }}
               </p>
             </div>
             <div class="vendor-feed__right">
-              <p>{{ formatDate(entry.occurredAt) }}</p>
-              <p>{{ formatCurrency(entry.amount, entry.currency) }}</p>
-              <AppStatusBadge :status="entry.balanceImpact" />
+              <p class="vendor-feed__line">
+                <span class="vendor-feed__line-label">Transaction amount</span>
+                <span>{{
+                  formatCurrency(entry.balanceImpact, entry.currency)
+                }}</span>
+              </p>
+              <p class="vendor-feed__line">
+                <span class="vendor-feed__line-label">Balance after</span>
+                <span>{{
+                  formatCurrency(entry.balanceAfter, entry.currency)
+                }}</span>
+              </p>
             </div>
           </div>
         </div>

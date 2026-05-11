@@ -1,47 +1,44 @@
 <script setup lang="ts">
-const auth = useVendorAuth()
-const isLoggingOut = ref(false)
-const isMobileMenuOpen = ref(false)
+const auth = useVendorAuth();
+const isLoggingOut = ref(false);
+const isMobileMenuOpen = ref(false);
 
 onMounted(async () => {
-  await auth.ensureInitialized()
-})
+  await auth.ensureInitialized();
+});
 
-const isAuthenticated = computed(() => !!auth.token.value)
+const isAuthenticated = computed(() => !!auth.token.value);
+const headerUi = {
+  container: "app-header__container",
+};
 
 async function handleLogout(): Promise<void> {
-  isLoggingOut.value = true
-  await auth.logout()
-  isMobileMenuOpen.value = false
-  isLoggingOut.value = false
-  await navigateTo('/login')
+  isLoggingOut.value = true;
+  await auth.logout();
+  isMobileMenuOpen.value = false;
+  isLoggingOut.value = false;
+  await navigateTo("/login");
 }
 
 function toggleMobileMenu(): void {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
 }
 
 function closeMobileMenu(): void {
-  isMobileMenuOpen.value = false
+  isMobileMenuOpen.value = false;
 }
 </script>
 
 <template>
   <UApp class="app-shell">
-    <UHeader
-      :toggle="false"
-      class="app-header"
-    >
+    <UHeader :toggle="false" class="app-header" :ui="headerUi">
       <template #left>
-        <NuxtLink
-          to="/"
-          class="app-brand"
-        >
+        <NuxtLink to="/" class="app-brand">
           <img
             src="/LogoIcon.svg"
             alt="Book Suey logo"
             class="app-brand__mark"
-          >
+          />
           <span class="app-brand__text">
             <span class="app-brand__name">Book Suey</span>
             <span class="app-brand__meta">Vendor Portal</span>
@@ -65,22 +62,14 @@ function closeMobileMenu(): void {
 
         <nav class="app-nav app-nav--desktop">
           <template v-if="isAuthenticated">
-            <NuxtLink
-              to="/vendor"
-              class="app-nav__link"
-            >Overview</NuxtLink>
-            <NuxtLink
-              to="/vendor/sales"
-              class="app-nav__link"
-            >Sales</NuxtLink>
-            <NuxtLink
-              to="/vendor/balance"
-              class="app-nav__link"
-            >Balance</NuxtLink>
-            <NuxtLink
-              to="/vendor/payouts"
-              class="app-nav__link"
-            >Payouts</NuxtLink>
+            <NuxtLink to="/vendor" class="app-nav__link">Overview</NuxtLink>
+            <NuxtLink to="/vendor/sales" class="app-nav__link">Sales</NuxtLink>
+            <NuxtLink to="/vendor/balance" class="app-nav__link"
+              >Balance</NuxtLink
+            >
+            <NuxtLink to="/vendor/payouts" class="app-nav__link"
+              >Payouts</NuxtLink
+            >
             <button
               type="button"
               class="app-nav__link app-nav__button"
@@ -92,14 +81,8 @@ function closeMobileMenu(): void {
           </template>
 
           <template v-else>
-            <NuxtLink
-              to="/login"
-              class="app-nav__link"
-            >Login</NuxtLink>
-            <NuxtLink
-              to="/register"
-              class="app-nav__link"
-            >Register</NuxtLink>
+            <NuxtLink to="/login" class="app-nav__link">Login</NuxtLink>
+            <NuxtLink to="/register" class="app-nav__link">Register</NuxtLink>
           </template>
         </nav>
       </template>
@@ -122,22 +105,26 @@ function closeMobileMenu(): void {
             to="/vendor"
             class="app-mobile-menu__link"
             @click="closeMobileMenu"
-          >Overview</NuxtLink>
+            >Overview</NuxtLink
+          >
           <NuxtLink
             to="/vendor/sales"
             class="app-mobile-menu__link"
             @click="closeMobileMenu"
-          >Sales</NuxtLink>
+            >Sales</NuxtLink
+          >
           <NuxtLink
             to="/vendor/balance"
             class="app-mobile-menu__link"
             @click="closeMobileMenu"
-          >Balance</NuxtLink>
+            >Balance</NuxtLink
+          >
           <NuxtLink
             to="/vendor/payouts"
             class="app-mobile-menu__link"
             @click="closeMobileMenu"
-          >Payouts</NuxtLink>
+            >Payouts</NuxtLink
+          >
           <button
             type="button"
             class="app-mobile-menu__link app-mobile-menu__button"
@@ -153,12 +140,14 @@ function closeMobileMenu(): void {
             to="/login"
             class="app-mobile-menu__link"
             @click="closeMobileMenu"
-          >Login</NuxtLink>
+            >Login</NuxtLink
+          >
           <NuxtLink
             to="/register"
             class="app-mobile-menu__link"
             @click="closeMobileMenu"
-          >Register</NuxtLink>
+            >Register</NuxtLink
+          >
         </template>
       </nav>
     </aside>

@@ -31,7 +31,7 @@
   --portal-solar: #fff14a;
   --portal-night: #133328;
   --portal-paper: #fffef1;
-  --portal-page-max-width: 76rem;
+  --portal-page-max-width: 86rem;
 }
 
 html {
@@ -68,6 +68,13 @@ body {
   margin: 0;
   border-bottom: 2px solid var(--portal-line);
   background-color: var(--portal-paper);
+}
+
+.app-header__container {
+  width: min(calc(100% - 2rem), var(--portal-page-max-width));
+  margin: 0 auto;
+  max-width: none !important;
+  padding-inline: 0 !important;
 }
 
 .app-footer {
@@ -954,7 +961,7 @@ body {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1279px) {
   body {
     overflow-x: hidden;
   }
@@ -974,6 +981,10 @@ body {
   }
 
   .app-main__inner {
+    width: min(calc(100% - 1rem), var(--portal-page-max-width));
+  }
+
+  .app-header__container {
     width: min(calc(100% - 1rem), var(--portal-page-max-width));
   }
 
@@ -1012,14 +1023,6 @@ body {
 
   .app-menu-toggle {
     display: inline-flex;
-  }
-
-  .table-shell:not(.table-shell--preserve-columns) .table-shell__desktop {
-    display: none;
-  }
-
-  .table-shell:not(.table-shell--preserve-columns) .table-shell__mobile {
-    display: block;
   }
 
   .table-shell {
@@ -1093,7 +1096,17 @@ body {
   }
 }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
+  .table-shell:not(.table-shell--preserve-columns) .table-shell__desktop {
+    display: none;
+  }
+
+  .table-shell:not(.table-shell--preserve-columns) .table-shell__mobile {
+    display: block;
+  }
+}
+
+@media (min-width: 1280px) {
   .app-mobile-backdrop,
   .app-mobile-menu {
     display: none;
@@ -1140,7 +1153,7 @@ body {
 }
 
 .vendor-feed__line-label {
-  display: none;
+  display: inline-flex;
   color: var(--portal-ink-soft);
   font-family: var(--font-mono);
   font-size: 0.66rem;
