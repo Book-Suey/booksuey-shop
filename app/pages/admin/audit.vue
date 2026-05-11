@@ -306,6 +306,7 @@ const metrics = computed(() => {
         :columns="columns"
         :rows="data.auditEvents"
         :row-key="(row) => row.auditEventId"
+        :mobile-columns="['createdAt', 'action', 'actor', 'entity', 'change']"
       >
         <template #cell:createdAt="{ row }">
           {{ formatDate(row.createdAt as string) }}

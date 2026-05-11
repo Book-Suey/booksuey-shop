@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const adminAuth = useAdminAuth()
 const isLoggingOut = ref(false)
+const isMobileMenuOpen = ref(false)
 
 const adminNavMenuUi = {
   content:
@@ -50,8 +51,17 @@ onMounted(async () => {
 async function handleLogout(): Promise<void> {
   isLoggingOut.value = true
   await adminAuth.logout()
+  isMobileMenuOpen.value = false
   isLoggingOut.value = false
   await navigateTo('/login')
+}
+
+function toggleMobileMenu(): void {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
+
+function closeMobileMenu(): void {
+  isMobileMenuOpen.value = false
 }
 </script>
 
@@ -79,7 +89,20 @@ async function handleLogout(): Promise<void> {
       </template>
 
       <template #right>
-        <nav class="app-nav">
+        <button
+          type="button"
+          class="app-menu-toggle"
+          :aria-expanded="isMobileMenuOpen"
+          aria-label="Toggle admin navigation menu"
+          @click="toggleMobileMenu"
+        >
+          <UIcon
+            :name="isMobileMenuOpen ? 'i-lucide-x' : 'i-lucide-menu'"
+            class="app-menu-toggle__icon"
+          />
+        </button>
+
+        <nav class="app-nav app-nav--desktop">
           <NuxtLink
             to="/admin"
             class="app-nav__link"
@@ -162,6 +185,82 @@ async function handleLogout(): Promise<void> {
         </nav>
       </template>
     </UHeader>
+
+    <div
+      v-if="isMobileMenuOpen"
+      class="app-mobile-backdrop"
+      @click="closeMobileMenu"
+    />
+
+    <aside
+      class="app-mobile-menu"
+      :class="{ 'app-mobile-menu--open': isMobileMenuOpen }"
+      aria-label="Admin mobile navigation"
+    >
+      <nav class="app-mobile-menu__nav">
+        <NuxtLink
+          to="/admin"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Home</NuxtLink>
+
+        <p class="app-mobile-menu__section-title">
+          Vendors
+        </p>
+        <NuxtLink
+          to="/admin/vendors"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Vendor Accounts</NuxtLink>
+        <NuxtLink
+          to="/admin/vendors/approved-vendors"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Approved Vendor List</NuxtLink>
+        <NuxtLink
+          to="/admin/vendors/non-vendor-sources"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Verified Non-Vendor Sources</NuxtLink>
+
+        <p class="app-mobile-menu__section-title">
+          Payouts
+        </p>
+        <NuxtLink
+          to="/admin/payout-requests"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Manage Payouts</NuxtLink>
+        <NuxtLink
+          to="/admin/payout-requests/payout-failures"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Payout Failures</NuxtLink>
+
+        <p class="app-mobile-menu__section-title">
+          Admin
+        </p>
+        <NuxtLink
+          to="/admin/imports"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Import Sales</NuxtLink>
+        <NuxtLink
+          to="/admin/audit"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Audit</NuxtLink>
+
+        <button
+          type="button"
+          class="app-mobile-menu__link app-mobile-menu__button"
+          :disabled="isLoggingOut"
+          @click="handleLogout"
+        >
+          {{ isLoggingOut ? "Signing out..." : "Logout" }}
+        </button>
+      </nav>
+    </aside>
 
     <UMain class="app-main app-main--admin">
       <div class="app-main__inner">
