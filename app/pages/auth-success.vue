@@ -1,65 +1,51 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'guest-only'
-})
+  middleware: "guest-only",
+});
 
-const route = useRoute()
+const route = useRoute();
 
-const timer = ref<ReturnType<typeof setTimeout> | null>(null)
-const isExiting = ref(false)
+const timer = ref<ReturnType<typeof setTimeout> | null>(null);
+const isExiting = ref(false);
 
 const isPreviewMode = computed(() => {
-  const preview = route.query.preview
+  const preview = route.query.preview;
 
   if (Array.isArray(preview)) {
     return preview.some(
-      value =>
-        typeof value === 'string'
-        && !['0', 'false', 'no', 'off'].includes(value.toLowerCase())
-    )
+      (value) =>
+        typeof value === "string" &&
+        !["0", "false", "no", "off"].includes(value.toLowerCase()),
+    );
   }
 
-  if (typeof preview === 'string') {
-    return !['0', 'false', 'no', 'off'].includes(preview.toLowerCase())
+  if (typeof preview === "string") {
+    return !["0", "false", "no", "off"].includes(preview.toLowerCase());
   }
 
   // Treat presence-only query params like ?preview as enabled.
-  return preview !== undefined
-})
-
-const eventLabel = computed(() => {
-  const event = route.query.event
-
-  if (event === 'reset-password') {
-    return 'Password Updated'
-  }
-
-  if (event === 'registered') {
-    return 'Account Created'
-  }
-
-  return 'Success'
-})
+  return preview !== undefined;
+});
 
 onMounted(() => {
   if (isPreviewMode.value) {
-    return
+    return;
   }
 
   timer.value = setTimeout(() => {
-    isExiting.value = true
+    isExiting.value = true;
 
     timer.value = setTimeout(() => {
-      void navigateTo('/login')
-    }, 420)
-  }, 1650)
-})
+      void navigateTo("/login");
+    }, 420);
+  }, 1650);
+});
 
 onBeforeUnmount(() => {
   if (timer.value) {
-    clearTimeout(timer.value)
+    clearTimeout(timer.value);
   }
-})
+});
 </script>
 
 <template>
@@ -67,7 +53,7 @@ onBeforeUnmount(() => {
     class="success-transition-page"
     :class="{
       'success-transition-page--preview': isPreviewMode,
-      'success-transition-page--exiting': isExiting
+      'success-transition-page--exiting': isExiting,
     }"
   >
     <div class="success-check">
@@ -77,16 +63,8 @@ onBeforeUnmount(() => {
         role="img"
         aria-label="Success checkmark"
       >
-        <circle
-          class="success-check__ring"
-          cx="60"
-          cy="60"
-          r="48"
-        />
-        <path
-          class="success-check__mark"
-          d="M34 62 L53 81 L87 45"
-        />
+        <circle class="success-check__ring" cx="60" cy="60" r="48" />
+        <path class="success-check__mark" d="M34 62 L53 81 L87 45" />
       </svg>
 
       <span class="success-check__glow success-check__glow--one" />
@@ -94,12 +72,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="success-transition-page__content">
-      <p class="success-transition-page__kicker">
-        {{ eventLabel }}
-      </p>
-      <h1 class="success-transition-page__title">
-        Success
-      </h1>
+      <h1 class="success-transition-page__title">Success</h1>
       <p class="success-transition-page__copy">
         {{
           isPreviewMode

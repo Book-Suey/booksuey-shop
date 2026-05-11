@@ -1,183 +1,183 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'admin-auth',
-  layout: 'admin'
-})
+  middleware: "admin-auth",
+  layout: "admin",
+});
 
 interface VendorRecord {
-  vendorId: string
-  legalName: string
-  displayName: string
-  email: string
-  phone?: string
-  status: 'active' | 'inactive'
-  approvedVendorId?: string
+  vendorId: string;
+  legalName: string;
+  displayName: string;
+  email: string;
+  phone?: string;
+  status: "active" | "inactive";
+  approvedVendorId?: string;
 }
 
 interface ApprovedVendorRecord {
-  basilId: string
-  firstName: string
-  lastName: string
-  email: string
-  phone?: string
+  basilId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
 }
 
 interface InviteVendorResponse {
-  message: string
-  invitePath: string
+  message: string;
+  invitePath: string;
   inviteEmail?: {
-    delivered: boolean
-    skippedReason?: string
-  }
+    delivered: boolean;
+    skippedReason?: string;
+  };
   vendor: {
-    vendorId: string
-    approvedVendorId?: string
-    email: string
-  }
+    vendorId: string;
+    approvedVendorId?: string;
+    email: string;
+  };
 }
 
-const auth = useAdminAuth()
-const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
-const showInviteModal = ref(false)
-const inviteApprovedVendorId = ref('')
-const inviteError = ref<string | null>(null)
-const inviteSuccess = ref<InviteVendorResponse | null>(null)
-const isInviting = ref(false)
-const copyInviteMessage = ref<string | null>(null)
+const auth = useAdminAuth();
+const statusFilter = ref<"all" | "active" | "inactive">("all");
+const showInviteModal = ref(false);
+const inviteApprovedVendorId = ref("");
+const inviteError = ref<string | null>(null);
+const inviteSuccess = ref<InviteVendorResponse | null>(null);
+const isInviting = ref(false);
+const copyInviteMessage = ref<string | null>(null);
 
 const { data, pending, error, refresh } = await useAsyncData(
-  'admin-vendors-list',
+  "admin-vendors-list",
   async () => {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
-    return await $fetch<{ vendors: VendorRecord[] }>('/api/admin/vendors', {
-      method: 'GET',
+    return await $fetch<{ vendors: VendorRecord[] }>("/api/admin/vendors", {
+      method: "GET",
       headers: auth.authHeaders(),
       query:
-        statusFilter.value === 'all'
+        statusFilter.value === "all"
           ? undefined
-          : { status: statusFilter.value }
-    })
+          : { status: statusFilter.value },
+    });
   },
   {
     server: false,
     watch: [statusFilter],
-    default: () => ({ vendors: [] as VendorRecord[] })
-  }
-)
+    default: () => ({ vendors: [] as VendorRecord[] }),
+  },
+);
 
-const { data: approvedVendorData, pending: approvedVendorsPending }
-  = await useAsyncData(
-    'admin-approved-vendors-for-invite',
+const { data: approvedVendorData, pending: approvedVendorsPending } =
+  await useAsyncData(
+    "admin-approved-vendors-for-invite",
     async () => {
-      await auth.ensureInitialized()
+      await auth.ensureInitialized();
 
       return await $fetch<{ approvedVendors: ApprovedVendorRecord[] }>(
-        '/api/admin/approved-vendors',
+        "/api/admin/approved-vendors",
         {
-          method: 'GET',
-          headers: auth.authHeaders()
-        }
-      )
+          method: "GET",
+          headers: auth.authHeaders(),
+        },
+      );
     },
     {
       server: false,
-      default: () => ({ approvedVendors: [] as ApprovedVendorRecord[] })
-    }
-  )
+      default: () => ({ approvedVendors: [] as ApprovedVendorRecord[] }),
+    },
+  );
 
 const inviteOptions = computed(() => {
   const linkedApprovedVendorIds = new Set(
     data.value.vendors
-      .map(vendor => vendor.approvedVendorId)
-      .filter((value): value is string => Boolean(value))
-  )
+      .map((vendor) => vendor.approvedVendorId)
+      .filter((value): value is string => Boolean(value)),
+  );
 
   return approvedVendorData.value.approvedVendors
     .filter(
-      approvedVendor => !linkedApprovedVendorIds.has(approvedVendor.basilId)
+      (approvedVendor) => !linkedApprovedVendorIds.has(approvedVendor.basilId),
     )
-    .map(approvedVendor => ({
+    .map((approvedVendor) => ({
       value: approvedVendor.basilId,
-      label: `${approvedVendor.lastName}, ${approvedVendor.firstName} (${approvedVendor.email})`
-    }))
-})
+      label: `${approvedVendor.lastName}, ${approvedVendor.firstName} (${approvedVendor.email})`,
+    }));
+});
 
 const columns = [
-  { key: 'vendorId', label: 'Vendor ID' },
-  { key: 'displayName', label: 'Display Name' },
-  { key: 'email', label: 'Email' },
-  { key: 'status', label: 'Status' },
-  { key: 'approvedVendorId', label: 'Approved Vendor' },
-  { key: 'actions', label: 'Actions' }
-]
+  { key: "vendorId", label: "Vendor ID" },
+  { key: "displayName", label: "Display Name" },
+  { key: "email", label: "Email" },
+  { key: "status", label: "Status" },
+  { key: "approvedVendorId", label: "Approved Vendor" },
+  { key: "actions", label: "Actions" },
+];
 
 function openInviteModal(): void {
-  inviteError.value = null
-  inviteSuccess.value = null
-  copyInviteMessage.value = null
-  inviteApprovedVendorId.value = inviteOptions.value[0]?.value || ''
-  showInviteModal.value = true
+  inviteError.value = null;
+  inviteSuccess.value = null;
+  copyInviteMessage.value = null;
+  inviteApprovedVendorId.value = inviteOptions.value[0]?.value || "";
+  showInviteModal.value = true;
 }
 
 function closeInviteModal(): void {
   if (isInviting.value) {
-    return
+    return;
   }
 
-  showInviteModal.value = false
+  showInviteModal.value = false;
 }
 
 async function submitVendorInvite(): Promise<void> {
-  inviteError.value = null
-  inviteSuccess.value = null
-  copyInviteMessage.value = null
+  inviteError.value = null;
+  inviteSuccess.value = null;
+  copyInviteMessage.value = null;
 
   if (!inviteApprovedVendorId.value) {
-    inviteError.value = 'Select an approved vendor to invite.'
-    return
+    inviteError.value = "Select an approved vendor to invite.";
+    return;
   }
 
-  isInviting.value = true
+  isInviting.value = true;
 
   try {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
     inviteSuccess.value = await $fetch<InviteVendorResponse>(
-      '/api/admin/vendors/invite',
+      "/api/admin/vendors/invite",
       {
-        method: 'POST',
+        method: "POST",
         headers: auth.authHeaders(),
         body: {
-          approvedVendorId: inviteApprovedVendorId.value
-        }
-      }
-    )
+          approvedVendorId: inviteApprovedVendorId.value,
+        },
+      },
+    );
 
-    await refresh()
+    await refresh();
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage
-    inviteError.value
-      = statusMessage || 'Unable to send vendor invite right now.'
+      ?.statusMessage;
+    inviteError.value =
+      statusMessage || "Unable to send vendor invite right now.";
   } finally {
-    isInviting.value = false
+    isInviting.value = false;
   }
 }
 
 async function copyInviteLink(): Promise<void> {
   if (!inviteSuccess.value || !import.meta.client) {
-    return
+    return;
   }
 
-  const absoluteInviteLink = `${window.location.origin}${inviteSuccess.value.invitePath}`
+  const absoluteInviteLink = `${window.location.origin}${inviteSuccess.value.invitePath}`;
 
   try {
-    await navigator.clipboard.writeText(absoluteInviteLink)
-    copyInviteMessage.value = 'Invite link copied to clipboard.'
+    await navigator.clipboard.writeText(absoluteInviteLink);
+    copyInviteMessage.value = "Invite link copied to clipboard.";
   } catch {
-    copyInviteMessage.value
-      = 'Unable to copy link automatically. Copy it manually from the message above.'
+    copyInviteMessage.value =
+      "Unable to copy link automatically. Copy it manually from the message above.";
   }
 }
 </script>
@@ -185,12 +185,7 @@ async function copyInviteLink(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">
-        Admin vendor management
-      </p>
-      <h1 class="auth-title">
-        Vendor accounts
-      </h1>
+      <h1 class="auth-title">Vendor accounts</h1>
       <p class="auth-copy">
         Review vendor account status, linked approved vendors, and send invites.
       </p>
@@ -228,8 +223,8 @@ async function copyInviteLink(): Promise<void> {
       v-else-if="error"
       title="Unable to load vendors"
       :message="
-        (error as { statusMessage?: string })?.statusMessage
-          || 'Request failed.'
+        (error as { statusMessage?: string })?.statusMessage ||
+        'Request failed.'
       "
       @retry="refresh"
     />
@@ -240,14 +235,19 @@ async function copyInviteLink(): Promise<void> {
       description="Create a vendor account or adjust your status filter."
     />
 
-    <article
-      v-else
-      class="vendor-panel"
-    >
+    <article v-else class="vendor-panel">
       <AppDataTable
         :columns="columns"
         :rows="data.vendors"
         :row-key="(row) => row.vendorId"
+        :mobile-columns="[
+          'displayName',
+          'status',
+          'approvedVendorId',
+          'email',
+          'vendorId',
+          'actions',
+        ]"
       >
         <template #cell:status="{ row }">
           <AppStatusBadge :status="row.status as string" />
@@ -287,20 +287,14 @@ async function copyInviteLink(): Promise<void> {
           link.
         </p>
 
-        <form
-          class="auth-form"
-          @submit.prevent="submitVendorInvite"
-        >
+        <form class="auth-form" @submit.prevent="submitVendorInvite">
           <label>
             <span>Approved vendor</span>
             <select
               v-model="inviteApprovedVendorId"
               :disabled="approvedVendorsPending || inviteOptions.length === 0"
             >
-              <option
-                v-if="inviteOptions.length === 0"
-                value=""
-              >
+              <option v-if="inviteOptions.length === 0" value="">
                 No unlinked approved vendors available
               </option>
               <option
@@ -313,17 +307,11 @@ async function copyInviteLink(): Promise<void> {
             </select>
           </label>
 
-          <p
-            v-if="inviteError"
-            class="auth-error"
-          >
+          <p v-if="inviteError" class="auth-error">
             {{ inviteError }}
           </p>
 
-          <p
-            v-if="inviteSuccess"
-            class="auth-success"
-          >
+          <p v-if="inviteSuccess" class="auth-success">
             {{ inviteSuccess.message }} Invite link:
             {{ inviteSuccess.invitePath }}
             <template v-if="inviteSuccess.inviteEmail?.delivered">
@@ -334,10 +322,7 @@ async function copyInviteLink(): Promise<void> {
             </template>
           </p>
 
-          <p
-            v-if="copyInviteMessage"
-            class="panel-copy"
-          >
+          <p v-if="copyInviteMessage" class="panel-copy">
             {{ copyInviteMessage }}
           </p>
 

@@ -146,9 +146,6 @@ const metrics = computed(() => {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">
-        Admin operational visibility
-      </p>
       <h1 class="auth-title">
         Audit trail
       </h1>

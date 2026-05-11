@@ -251,7 +251,6 @@ async function recheckPayoutProviderStatus(
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">Admin operational visibility</p>
       <h1 class="auth-title">Payout failures</h1>
       <p class="auth-copy">
         Reconcile failed payout attempts, verify released funds restoration, and

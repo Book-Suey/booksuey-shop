@@ -1,69 +1,69 @@
 <script setup lang="ts" generic="TRow extends object">
 const props = defineProps<{
-  columns: Array<{ key: string; label: string }>;
-  rows: TRow[];
-  rowKey: (row: TRow, index: number) => string;
-  stackOnMobile?: boolean;
-  mobileColumns?: string[];
-  rowExpandable?: (row: TRow) => boolean;
-}>();
+  columns: Array<{ key: string, label: string }>
+  rows: TRow[]
+  rowKey: (row: TRow, index: number) => string
+  stackOnMobile?: boolean
+  mobileColumns?: string[]
+  rowExpandable?: (row: TRow) => boolean
+}>()
 
-const slots = useSlots();
+const slots = useSlots()
 
 const tableColumns = computed(() =>
-  props.columns.map((column) => ({
+  props.columns.map(column => ({
     accessorKey: column.key,
-    header: column.label,
-  })),
-);
+    header: column.label
+  }))
+)
 
-const hasExpandedSlot = computed(() => Boolean(slots.expanded));
+const hasExpandedSlot = computed(() => Boolean(slots.expanded))
 
-const useMobileCards = computed(() => props.stackOnMobile !== false);
+const useMobileCards = computed(() => props.stackOnMobile !== false)
 
 const mobileColumns = computed(() => {
   if (!props.mobileColumns || props.mobileColumns.length === 0) {
-    return props.columns;
+    return props.columns
   }
 
-  const byKey = new Map(props.columns.map((column) => [column.key, column]));
+  const byKey = new Map(props.columns.map(column => [column.key, column]))
 
   return props.mobileColumns
-    .map((key) => byKey.get(key))
-    .filter((column): column is { key: string; label: string } =>
-      Boolean(column),
-    );
-});
+    .map(key => byKey.get(key))
+    .filter((column): column is { key: string, label: string } =>
+      Boolean(column)
+    )
+})
 
 function getRowCanExpand(row: { original: TRow }): boolean {
   if (!hasExpandedSlot.value) {
-    return false;
+    return false
   }
 
   if (!props.rowExpandable) {
-    return true;
+    return true
   }
 
-  return props.rowExpandable(row.original);
+  return props.rowExpandable(row.original)
 }
 
 function getCellValue(row: TRow, key: string): unknown {
-  const segments = key.split(".");
-  let current: unknown = row;
+  const segments = key.split('.')
+  let current: unknown = row
 
   for (const segment of segments) {
     if (
-      current === null ||
-      current === undefined ||
-      typeof current !== "object"
+      current === null
+      || current === undefined
+      || typeof current !== 'object'
     ) {
-      return undefined;
+      return undefined
     }
 
-    current = (current as Record<string, unknown>)[segment];
+    current = (current as Record<string, unknown>)[segment]
   }
 
-  return current;
+  return current
 }
 </script>
 
@@ -89,7 +89,7 @@ function getCellValue(row: TRow, key: string): unknown {
         th: 'table-shell__th',
         td: 'table-shell__td',
         separator: 'table-shell__separator',
-        empty: 'table-shell__empty',
+        empty: 'table-shell__empty'
       }"
       empty="No records found."
     >
@@ -117,7 +117,10 @@ function getCellValue(row: TRow, key: string): unknown {
       </template>
     </UTable>
 
-    <div v-if="useMobileCards" class="table-shell__mobile">
+    <div
+      v-if="useMobileCards"
+      class="table-shell__mobile"
+    >
       <article
         v-for="(row, rowIndex) in props.rows"
         :key="props.rowKey(row, rowIndex)"
@@ -129,7 +132,7 @@ function getCellValue(row: TRow, key: string): unknown {
             :key="column.key"
             class="table-shell__mobile-item"
             :class="{
-              'table-shell__mobile-item--actions': column.key === 'actions',
+              'table-shell__mobile-item--actions': column.key === 'actions'
             }"
           >
             <dt class="table-shell__mobile-label">
@@ -142,7 +145,7 @@ function getCellValue(row: TRow, key: string): unknown {
                 :table-row="{
                   getCanExpand: () => false,
                   toggleExpanded: () => {},
-                  getIsExpanded: () => false,
+                  getIsExpanded: () => false
                 }"
                 :value="getCellValue(row, column.key)"
               >
@@ -153,7 +156,10 @@ function getCellValue(row: TRow, key: string): unknown {
         </dl>
       </article>
 
-      <p v-if="props.rows.length === 0" class="table-shell__mobile-empty">
+      <p
+        v-if="props.rows.length === 0"
+        class="table-shell__mobile-empty"
+      >
         No records found.
       </p>
     </div>

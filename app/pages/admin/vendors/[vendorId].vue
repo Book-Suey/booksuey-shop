@@ -159,7 +159,6 @@ const payoutColumns = [
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">Admin vendor management</p>
       <h1 class="auth-title">Vendor financial overview</h1>
       <p class="auth-copy">
         Sales, ledger, balances, and payout activity for

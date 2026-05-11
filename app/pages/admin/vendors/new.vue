@@ -1,31 +1,31 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'admin-auth',
-  layout: 'admin'
-})
+  middleware: "admin-auth",
+  layout: "admin",
+});
 
-const isSubmitting = ref(false)
-const formError = ref<string | null>(null)
+const isSubmitting = ref(false);
+const formError = ref<string | null>(null);
 
 const form = reactive({
-  legalName: '',
-  displayName: '',
-  email: '',
-  phone: '',
-  password: '',
-  status: 'active' as 'active' | 'inactive',
-  approvedVendorId: ''
-})
+  legalName: "",
+  displayName: "",
+  email: "",
+  phone: "",
+  password: "",
+  status: "active" as "active" | "inactive",
+  approvedVendorId: "",
+});
 
 async function submitNewVendor(): Promise<void> {
-  formError.value = null
-  isSubmitting.value = true
+  formError.value = null;
+  isSubmitting.value = true;
 
   try {
     const response = await $fetch<{ vendor: { vendorId: string } }>(
-      '/api/admin/vendors',
+      "/api/admin/vendors",
       {
-        method: 'POST',
+        method: "POST",
         body: {
           legalName: form.legalName,
           displayName: form.displayName,
@@ -33,17 +33,17 @@ async function submitNewVendor(): Promise<void> {
           phone: form.phone || undefined,
           password: form.password,
           status: form.status,
-          approvedVendorId: form.approvedVendorId || undefined
-        }
-      }
-    )
+          approvedVendorId: form.approvedVendorId || undefined,
+        },
+      },
+    );
 
-    await navigateTo(`/admin/vendors/${response.vendor.vendorId}`)
+    await navigateTo(`/admin/vendors/${response.vendor.vendorId}`);
   } catch (error: unknown) {
-    const statusMessage = (error as { statusMessage?: string })?.statusMessage
-    formError.value = statusMessage || 'Unable to create vendor account.'
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage;
+    formError.value = statusMessage || "Unable to create vendor account.";
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
 }
 </script>
@@ -51,55 +51,32 @@ async function submitNewVendor(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">
-        Admin vendor management
-      </p>
-      <h1 class="auth-title">
-        Add vendor account
-      </h1>
+      <h1 class="auth-title">Add vendor account</h1>
       <p class="auth-copy">
         Create a new vendor login profile and optional approved-vendor mapping.
       </p>
     </header>
 
     <article class="vendor-panel">
-      <form
-        class="auth-form"
-        @submit.prevent="submitNewVendor"
-      >
+      <form class="auth-form" @submit.prevent="submitNewVendor">
         <label>
           <span>Legal name</span>
-          <input
-            v-model="form.legalName"
-            required
-            type="text"
-          >
+          <input v-model="form.legalName" required type="text" />
         </label>
 
         <label>
           <span>Display name</span>
-          <input
-            v-model="form.displayName"
-            required
-            type="text"
-          >
+          <input v-model="form.displayName" required type="text" />
         </label>
 
         <label>
           <span>Email</span>
-          <input
-            v-model="form.email"
-            required
-            type="email"
-          >
+          <input v-model="form.email" required type="email" />
         </label>
 
         <label>
           <span>Phone (optional)</span>
-          <input
-            v-model="form.phone"
-            type="text"
-          >
+          <input v-model="form.phone" type="text" />
         </label>
 
         <label>
@@ -109,7 +86,7 @@ async function submitNewVendor(): Promise<void> {
             required
             minlength="8"
             type="password"
-          >
+          />
         </label>
 
         <label>
@@ -122,16 +99,10 @@ async function submitNewVendor(): Promise<void> {
 
         <label>
           <span>Approved vendor ID (optional)</span>
-          <input
-            v-model="form.approvedVendorId"
-            type="text"
-          >
+          <input v-model="form.approvedVendorId" type="text" />
         </label>
 
-        <p
-          v-if="formError"
-          class="auth-error"
-        >
+        <p v-if="formError" class="auth-error">
           {{ formError }}
         </p>
 

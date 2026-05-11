@@ -1,154 +1,149 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'vendor-auth',
-  layout: 'vendor'
-})
+  middleware: "vendor-auth",
+  layout: "vendor",
+});
 
 interface VendorBalance {
-  pendingAmount: string
-  availableAmount: string
-  paidAmount: string
-  asOf: string
+  pendingAmount: string;
+  availableAmount: string;
+  paidAmount: string;
+  asOf: string;
 }
 
 interface VendorSale {
-  saleRecordId: string
-  soldAt: string
-  title: string
-  grossAmount: string
-  commissionAmount: string
+  saleRecordId: string;
+  soldAt: string;
+  title: string;
+  grossAmount: string;
+  commissionAmount: string;
 }
 
 interface VendorLedgerEntry {
-  entryId: string
-  entryType: string
-  amount: string
-  balanceImpact: string
-  currency: string
-  occurredAt: string
+  entryId: string;
+  entryType: string;
+  amount: string;
+  balanceImpact: string;
+  currency: string;
+  occurredAt: string;
   reference: {
-    referenceType: string
-    referenceId: string
-  }
+    referenceType: string;
+    referenceId: string;
+  };
 }
 
 interface VendorPayoutRequest {
-  payoutRequestId: string
-  amount: string
-  currency: string
-  status: string
-  requestedAt: string
+  payoutRequestId: string;
+  amount: string;
+  currency: string;
+  status: string;
+  requestedAt: string;
 }
 
-const auth = useVendorAuth()
-const hasMounted = ref(false)
+const auth = useVendorAuth();
+const hasMounted = ref(false);
 
-function formatCurrency(amount: string, currency = 'USD'): string {
-  const parsed = Number.parseFloat(amount)
+function formatCurrency(amount: string, currency = "USD"): string {
+  const parsed = Number.parseFloat(amount);
 
   if (Number.isNaN(parsed)) {
-    return amount
+    return amount;
   }
 
-  return parsed.toLocaleString('en-US', {
-    style: 'currency',
-    currency
-  })
+  return parsed.toLocaleString("en-US", {
+    style: "currency",
+    currency,
+  });
 }
 
 function formatDate(value: string): string {
-  const parsed = new Date(value)
+  const parsed = new Date(value);
 
   if (Number.isNaN(parsed.getTime())) {
-    return value
+    return value;
   }
 
-  return parsed.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 const { data, pending, error, refresh } = await useAsyncData(
-  'vendor-overview-dashboard',
+  "vendor-overview-dashboard",
   async () => {
-    await auth.ensureInitialized()
-    const headers = auth.authHeaders()
+    await auth.ensureInitialized();
+    const headers = auth.authHeaders();
 
-    const [balanceResponse, salesResponse, ledgerResponse, payoutsResponse]
-      = await Promise.all([
-        $fetch<{ balance: VendorBalance }>('/api/vendor/balance', {
-          method: 'GET',
-          headers
+    const [balanceResponse, salesResponse, ledgerResponse, payoutsResponse] =
+      await Promise.all([
+        $fetch<{ balance: VendorBalance }>("/api/vendor/balance", {
+          method: "GET",
+          headers,
         }),
-        $fetch<{ sales: VendorSale[] }>('/api/vendor/sales', {
-          method: 'GET',
-          headers
+        $fetch<{ sales: VendorSale[] }>("/api/vendor/sales", {
+          method: "GET",
+          headers,
         }),
-        $fetch<{ ledgerEntries: VendorLedgerEntry[] }>('/api/vendor/ledger', {
-          method: 'GET',
-          headers
+        $fetch<{ ledgerEntries: VendorLedgerEntry[] }>("/api/vendor/ledger", {
+          method: "GET",
+          headers,
         }),
         $fetch<{ payoutRequests: VendorPayoutRequest[] }>(
-          '/api/vendor/payout-requests',
-          { method: 'GET', headers }
-        )
-      ])
+          "/api/vendor/payout-requests",
+          { method: "GET", headers },
+        ),
+      ]);
 
     return {
       balance: balanceResponse.balance,
       sales: salesResponse.sales.slice(0, 5),
       ledgerEntries: ledgerResponse.ledgerEntries.slice(-5).reverse(),
-      payoutRequests: payoutsResponse.payoutRequests.slice(0, 5)
-    }
+      payoutRequests: payoutsResponse.payoutRequests.slice(0, 5),
+    };
   },
   {
     server: false,
     immediate: false,
     default: () => ({
       balance: {
-        pendingAmount: '0',
-        availableAmount: '0',
-        paidAmount: '0',
-        asOf: new Date().toISOString()
+        pendingAmount: "0",
+        availableAmount: "0",
+        paidAmount: "0",
+        asOf: new Date().toISOString(),
       },
       sales: [] as VendorSale[],
       ledgerEntries: [] as VendorLedgerEntry[],
-      payoutRequests: [] as VendorPayoutRequest[]
-    })
-  }
-)
+      payoutRequests: [] as VendorPayoutRequest[],
+    }),
+  },
+);
 
 onMounted(async () => {
-  hasMounted.value = true
-  await refresh()
-})
+  hasMounted.value = true;
+  await refresh();
+});
 
 const salesColumns = [
-  { key: 'soldAt', label: 'Sold At' },
-  { key: 'title', label: 'Title' },
-  { key: 'grossAmount', label: 'Gross' },
-  { key: 'commissionAmount', label: 'Commission' }
-]
+  { key: "soldAt", label: "Sold At" },
+  { key: "title", label: "Title" },
+  { key: "grossAmount", label: "Gross" },
+  { key: "commissionAmount", label: "Commission" },
+];
 
 const payoutColumns = [
-  { key: 'payoutRequestId', label: 'Request' },
-  { key: 'requestedAt', label: 'Requested At' },
-  { key: 'amount', label: 'Amount' },
-  { key: 'status', label: 'Status' }
-]
+  { key: "payoutRequestId", label: "Request" },
+  { key: "requestedAt", label: "Requested At" },
+  { key: "amount", label: "Amount" },
+  { key: "status", label: "Status" },
+];
 </script>
 
 <template>
   <section class="vendor-page">
     <header class="vendor-page__header">
-      <p class="auth-kicker">
-        Vendor dashboard
-      </p>
-      <h1 class="auth-title">
-        Financial overview
-      </h1>
+      <h1 class="auth-title">Financial overview</h1>
       <p class="auth-copy">
         Live balance, sales activity, ledger entries, and payout request status.
       </p>
@@ -178,8 +173,8 @@ const payoutColumns = [
       v-else-if="hasMounted && error"
       title="Unable to load dashboard"
       :message="
-        (error as { statusMessage?: string })?.statusMessage
-          || 'Dashboard data request failed.'
+        (error as { statusMessage?: string })?.statusMessage ||
+        'Dashboard data request failed.'
       "
       @retry="refresh"
     />
@@ -187,27 +182,21 @@ const payoutColumns = [
     <template v-else>
       <section class="vendor-summary-grid">
         <article class="admin-card">
-          <p class="admin-card__label">
-            Available balance
-          </p>
+          <p class="admin-card__label">Available balance</p>
           <p class="admin-card__value">
             {{ formatCurrency(data.balance.availableAmount) }}
           </p>
         </article>
 
         <article class="admin-card">
-          <p class="admin-card__label">
-            Pending balance
-          </p>
+          <p class="admin-card__label">Pending balance</p>
           <p class="admin-card__value">
             {{ formatCurrency(data.balance.pendingAmount) }}
           </p>
         </article>
 
         <article class="admin-card">
-          <p class="admin-card__label">
-            Paid to date
-          </p>
+          <p class="admin-card__label">Paid to date</p>
           <p class="admin-card__value">
             {{ formatCurrency(data.balance.paidAmount) }}
           </p>
@@ -215,9 +204,7 @@ const payoutColumns = [
       </section>
 
       <article class="admin-page__header">
-        <p class="admin-card__label">
-          Balance as of
-        </p>
+        <p class="admin-card__label">Balance as of</p>
         <p class="auth-copy auth-copy--compact">
           {{ formatDate(data.balance.asOf) }}
         </p>
@@ -261,10 +248,7 @@ const payoutColumns = [
           title="No ledger entries yet"
           description="Ledger movement appears after imports or payouts."
         />
-        <div
-          v-else
-          class="vendor-feed"
-        >
+        <div v-else class="vendor-feed">
           <div
             v-for="entry in data.ledgerEntries"
             :key="entry.entryId"

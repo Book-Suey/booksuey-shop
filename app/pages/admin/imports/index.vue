@@ -237,7 +237,6 @@ async function submitSalesDetailUpload(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">Admin sales imports</p>
       <h1 class="auth-title">Import history</h1>
       <p class="auth-copy">
         Filter import runs by status, period, and upload date to review batch

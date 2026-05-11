@@ -1,167 +1,167 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'admin-auth',
-  layout: 'admin'
-})
+  middleware: "admin-auth",
+  layout: "admin",
+});
 
 interface AdminPayoutRequest {
-  payoutRequestId: string
-  vendorId: string
-  amount: string
-  currency: string
+  payoutRequestId: string;
+  vendorId: string;
+  amount: string;
+  currency: string;
   status:
-    | 'requested'
-    | 'approved'
-    | 'disbursing'
-    | 'paid'
-    | 'failed'
-    | 'rejected'
-  requiresAction: boolean
-  requestedAt: string
-  approvedAt?: string
-  rejectedAt?: string
-  disbursingAt?: string
-  paidAt?: string
-  failedAt?: string
+    | "requested"
+    | "approved"
+    | "disbursing"
+    | "paid"
+    | "failed"
+    | "rejected";
+  requiresAction: boolean;
+  requestedAt: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  disbursingAt?: string;
+  paidAt?: string;
+  failedAt?: string;
 }
 
-const auth = useAdminAuth()
-const isReconciling = ref(false)
-const reconcileMessage = ref<string | null>(null)
-const reconcileError = ref<string | null>(null)
+const auth = useAdminAuth();
+const isReconciling = ref(false);
+const reconcileMessage = ref<string | null>(null);
+const reconcileError = ref<string | null>(null);
 
 const filters = reactive({
-  status: 'active',
-  dateFrom: '',
-  dateTo: ''
-})
+  status: "active",
+  dateFrom: "",
+  dateTo: "",
+});
 
 const columns = [
-  { key: 'payoutRequestId', label: 'Request ID' },
-  { key: 'vendorId', label: 'Vendor ID' },
-  { key: 'amount', label: 'Amount' },
-  { key: 'status', label: 'Status' },
-  { key: 'requestedAt', label: 'Requested' },
-  { key: 'actions', label: 'Actions' }
-]
+  { key: "payoutRequestId", label: "Request ID" },
+  { key: "vendorId", label: "Vendor ID" },
+  { key: "amount", label: "Amount" },
+  { key: "status", label: "Status" },
+  { key: "requestedAt", label: "Requested" },
+  { key: "actions", label: "Actions" },
+];
 
 function toIsoBoundary(
   value: string,
-  boundary: 'start' | 'end'
+  boundary: "start" | "end",
 ): string | undefined {
   if (!value) {
-    return undefined
+    return undefined;
   }
 
-  const suffix = boundary === 'start' ? 'T00:00:00.000Z' : 'T23:59:59.999Z'
-  return new Date(`${value}${suffix}`).toISOString()
+  const suffix = boundary === "start" ? "T00:00:00.000Z" : "T23:59:59.999Z";
+  return new Date(`${value}${suffix}`).toISOString();
 }
 
 function formatDate(value: string): string {
-  const parsed = new Date(value)
+  const parsed = new Date(value);
 
   if (Number.isNaN(parsed.getTime())) {
-    return value
+    return value;
   }
 
-  return parsed.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  })
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function formatCurrency(amount: string): string {
-  const num = parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(num)
+  const num = parseFloat(amount);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(num);
 }
 
 const { data, pending, error, refresh } = await useAsyncData(
-  'admin-payout-requests-list',
+  "admin-payout-requests-list",
   async () => {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
     const query: Record<string, string | number> = {
-      limit: 100
+      limit: 100,
+    };
+
+    if (filters.status === "active") {
+      query.status = "requested,approved,disbursing";
+    } else if (filters.status !== "all") {
+      query.status = filters.status;
     }
 
-    if (filters.status === 'active') {
-      query.status = 'requested,approved,disbursing'
-    } else if (filters.status !== 'all') {
-      query.status = filters.status
-    }
-
-    const dateFrom = toIsoBoundary(filters.dateFrom, 'start')
-    const dateTo = toIsoBoundary(filters.dateTo, 'end')
+    const dateFrom = toIsoBoundary(filters.dateFrom, "start");
+    const dateTo = toIsoBoundary(filters.dateTo, "end");
 
     if (dateFrom) {
-      query.dateFrom = dateFrom
+      query.dateFrom = dateFrom;
     }
 
     if (dateTo) {
-      query.dateTo = dateTo
+      query.dateTo = dateTo;
     }
 
     return await $fetch<{ payoutRequests: AdminPayoutRequest[] }>(
-      '/api/admin/payout-requests',
+      "/api/admin/payout-requests",
       {
-        method: 'GET',
+        method: "GET",
         headers: auth.authHeaders(),
-        query
-      }
-    )
+        query,
+      },
+    );
   },
   {
     server: false,
     watch: [() => filters.status, () => filters.dateFrom, () => filters.dateTo],
-    default: () => ({ payoutRequests: [] as AdminPayoutRequest[] })
-  }
-)
+    default: () => ({ payoutRequests: [] as AdminPayoutRequest[] }),
+  },
+);
 
 const metrics = computed(() => {
-  const payouts = data.value.payoutRequests
+  const payouts = data.value.payoutRequests;
 
   return {
     total: payouts.length,
-    requiresAction: payouts.filter(p => p.requiresAction).length,
-    approved: payouts.filter(p => p.status === 'approved').length,
-    disbursing: payouts.filter(p => p.status === 'disbursing').length
-  }
-})
+    requiresAction: payouts.filter((p) => p.requiresAction).length,
+    approved: payouts.filter((p) => p.status === "approved").length,
+    disbursing: payouts.filter((p) => p.status === "disbursing").length,
+  };
+});
 
 async function reconcileDisbursingPayouts(): Promise<void> {
-  reconcileMessage.value = null
-  reconcileError.value = null
-  isReconciling.value = true
+  reconcileMessage.value = null;
+  reconcileError.value = null;
+  isReconciling.value = true;
 
   try {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
     const result = await $fetch<{
-      reconciledCount: number
-      updatedCount: number
-    }>('/api/admin/payout-recovery', {
-      method: 'POST',
+      reconciledCount: number;
+      updatedCount: number;
+    }>("/api/admin/payout-recovery", {
+      method: "POST",
       headers: auth.authHeaders(),
       body: {
-        action: 'reconcile',
-        limit: 100
-      }
-    })
+        action: "reconcile",
+        limit: 100,
+      },
+    });
 
-    reconcileMessage.value = `Reconciled ${result.reconciledCount} disbursing payouts (${result.updatedCount} updated).`
-    await refresh()
+    reconcileMessage.value = `Reconciled ${result.reconciledCount} disbursing payouts (${result.updatedCount} updated).`;
+    await refresh();
   } catch (error: unknown) {
-    const statusMessage = (error as { statusMessage?: string })?.statusMessage
-    reconcileError.value
-      = statusMessage || 'Unable to reconcile disbursing payouts right now.'
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage;
+    reconcileError.value =
+      statusMessage || "Unable to reconcile disbursing payouts right now.";
   } finally {
-    isReconciling.value = false
+    isReconciling.value = false;
   }
 }
 </script>
@@ -169,12 +169,7 @@ async function reconcileDisbursingPayouts(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">
-        Admin payout operations
-      </p>
-      <h1 class="auth-title">
-        Payout queue
-      </h1>
+      <h1 class="auth-title">Payout queue</h1>
       <p class="auth-copy">
         Review pending payout requests, approve or reject, and execute
         disbursements to vendors.
@@ -205,48 +200,34 @@ async function reconcileDisbursingPayouts(): Promise<void> {
         </NuxtLink>
       </div>
 
-      <p
-        v-if="reconcileMessage"
-        class="auth-success"
-      >
+      <p v-if="reconcileMessage" class="auth-success">
         {{ reconcileMessage }}
       </p>
-      <p
-        v-if="reconcileError"
-        class="auth-error"
-      >
+      <p v-if="reconcileError" class="auth-error">
         {{ reconcileError }}
       </p>
 
       <div class="admin-cards">
         <article class="admin-card">
-          <p class="admin-card__label">
-            Active queue
-          </p>
+          <p class="admin-card__label">Active queue</p>
           <p class="admin-card__value">
             {{ metrics.total }}
           </p>
         </article>
         <article class="admin-card">
-          <p class="admin-card__label">
-            Requires action
-          </p>
+          <p class="admin-card__label">Requires action</p>
           <p class="admin-card__value">
             {{ metrics.requiresAction }}
           </p>
         </article>
         <article class="admin-card">
-          <p class="admin-card__label">
-            Approved
-          </p>
+          <p class="admin-card__label">Approved</p>
           <p class="admin-card__value">
             {{ metrics.approved }}
           </p>
         </article>
         <article class="admin-card">
-          <p class="admin-card__label">
-            Disbursing
-          </p>
+          <p class="admin-card__label">Disbursing</p>
           <p class="admin-card__value">
             {{ metrics.disbursing }}
           </p>
@@ -257,9 +238,7 @@ async function reconcileDisbursingPayouts(): Promise<void> {
     <article class="vendor-panel stack-grid">
       <div>
         <h2>Filter payout queue</h2>
-        <p class="panel-copy">
-          Refine the visible payouts by status and date.
-        </p>
+        <p class="panel-copy">Refine the visible payouts by status and date.</p>
       </div>
 
       <form class="auth-form">
@@ -281,18 +260,12 @@ async function reconcileDisbursingPayouts(): Promise<void> {
 
         <label>
           <span>From date</span>
-          <input
-            v-model="filters.dateFrom"
-            type="date"
-          >
+          <input v-model="filters.dateFrom" type="date" />
         </label>
 
         <label>
           <span>To date</span>
-          <input
-            v-model="filters.dateTo"
-            type="date"
-          >
+          <input v-model="filters.dateTo" type="date" />
         </label>
       </form>
     </article>
@@ -308,8 +281,8 @@ async function reconcileDisbursingPayouts(): Promise<void> {
         v-else-if="error"
         title="Unable to load payout queue"
         :message="
-          (error as { statusMessage?: string })?.statusMessage
-            || 'Payout queue request failed.'
+          (error as { statusMessage?: string })?.statusMessage ||
+          'Payout queue request failed.'
         "
         @retry="refresh"
       />

@@ -1,80 +1,75 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'admin-auth',
-  layout: 'admin'
-})
+  middleware: "admin-auth",
+  layout: "admin",
+});
 
 interface AdminImportRecord {
-  batchId: string
-  status: 'completed' | 'failed'
+  batchId: string;
+  status: "completed" | "failed";
   summary: {
-    rejected: number
-  }
+    rejected: number;
+  };
 }
 
-const auth = useAdminAuth()
+const auth = useAdminAuth();
 
 const { data, pending, error, refresh } = await useAsyncData(
-  'admin-dashboard-overview',
+  "admin-dashboard-overview",
   async () => {
-    await auth.ensureInitialized()
+    await auth.ensureInitialized();
 
     return await $fetch<{ imports: AdminImportRecord[] }>(
-      '/api/admin/imports',
+      "/api/admin/imports",
       {
-        method: 'GET',
+        method: "GET",
         headers: auth.authHeaders(),
-        query: { limit: 25 }
-      }
-    )
+        query: { limit: 25 },
+      },
+    );
   },
   {
     server: false,
-    default: () => ({ imports: [] as AdminImportRecord[] })
-  }
-)
+    default: () => ({ imports: [] as AdminImportRecord[] }),
+  },
+);
 
 const cards = computed(() => {
-  const imports = data.value.imports
+  const imports = data.value.imports;
   const failedImports = imports.filter(
-    importBatch => importBatch.status === 'failed'
-  ).length
+    (importBatch) => importBatch.status === "failed",
+  ).length;
   const flaggedImports = imports.filter(
-    importBatch => importBatch.summary.rejected > 0
-  ).length
+    (importBatch) => importBatch.summary.rejected > 0,
+  ).length;
 
   return [
     {
-      label: 'Recent imports',
+      label: "Recent imports",
       value: String(imports.length),
-      status: imports.length > 0 ? 'completed' : 'pending',
-      href: '/admin/imports'
+      status: imports.length > 0 ? "completed" : "pending",
+      href: "/admin/imports",
     },
     {
-      label: 'Flagged batches',
+      label: "Flagged batches",
       value: String(flaggedImports),
-      status: flaggedImports > 0 ? 'pending' : 'completed',
-      href: '/admin/imports'
+      status: flaggedImports > 0 ? "pending" : "completed",
+      href: "/admin/imports",
     },
     {
-      label: 'Failed batches',
+      label: "Failed batches",
       value: String(failedImports),
-      status: failedImports > 0 ? 'failed' : 'completed',
-      href: '/admin/imports/upload'
-    }
-  ]
-})
+      status: failedImports > 0 ? "failed" : "completed",
+      href: "/admin/imports/upload",
+    },
+  ];
+});
 </script>
 
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <p class="auth-kicker">
-        Admin Console
-      </p>
-      <h1 class="auth-title">
-        Operations overview
-      </h1>
+      <h1 class="auth-title">Operations overview</h1>
       <p class="auth-copy">
         Review operational entry points and jump into imports, vendors, and
         payout workflows.
@@ -118,21 +113,14 @@ const cards = computed(() => {
       v-else-if="error"
       title="Unable to load operations overview"
       :message="
-        (error as { statusMessage?: string })?.statusMessage
-          || 'Dashboard request failed.'
+        (error as { statusMessage?: string })?.statusMessage ||
+        'Dashboard request failed.'
       "
       @retry="refresh"
     />
 
-    <div
-      v-else
-      class="admin-cards"
-    >
-      <article
-        v-for="card in cards"
-        :key="card.label"
-        class="admin-card"
-      >
+    <div v-else class="admin-cards">
+      <article v-for="card in cards" :key="card.label" class="admin-card">
         <p class="admin-card__label">
           {{ card.label }}
         </p>
