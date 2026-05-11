@@ -959,6 +959,20 @@ body {
     overflow-x: hidden;
   }
 
+  .admin-page,
+  .vendor-page,
+  .home-page {
+    overflow-x: hidden;
+  }
+
+  .admin-page > :not(.table-shell),
+  .vendor-page > :not(.table-shell),
+  .home-page > :not(.table-shell) {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
   .app-main__inner {
     width: min(calc(100% - 1rem), var(--portal-page-max-width));
   }
