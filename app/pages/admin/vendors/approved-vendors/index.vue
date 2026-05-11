@@ -1,69 +1,69 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "admin-auth",
-  layout: "admin",
-});
+  middleware: 'admin-auth',
+  layout: 'admin'
+})
 
 interface ApprovedVendorRecord {
-  basilId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  isLinked: boolean;
-  linkedVendorId: string | null;
+  basilId: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  isLinked: boolean
+  linkedVendorId: string | null
 }
 
-const auth = useAdminAuth();
-const search = ref("");
-const showCreateModal = ref(false);
-const showEditModal = ref(false);
-const isCreating = ref(false);
-const isEditing = ref(false);
-const createError = ref<string | null>(null);
-const editError = ref<string | null>(null);
-const editTargetId = ref<string | null>(null);
+const auth = useAdminAuth()
+const search = ref('')
+const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const isCreating = ref(false)
+const isEditing = ref(false)
+const createError = ref<string | null>(null)
+const editError = ref<string | null>(null)
+const editTargetId = ref<string | null>(null)
 
 const createForm = reactive({
-  basilId: "",
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: "",
-});
+  basilId: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: ''
+})
 
 const editForm = reactive({
-  basilId: "",
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: "",
-});
+  basilId: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: ''
+})
 
 const { data, pending, error, refresh } = await useAsyncData(
-  "admin-approved-vendors-list",
+  'admin-approved-vendors-list',
   async () => {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
     return await $fetch<{ approvedVendors: ApprovedVendorRecord[] }>(
-      "/api/admin/approved-vendors",
+      '/api/admin/approved-vendors',
       {
-        method: "GET",
-        headers: auth.authHeaders(),
-      },
-    );
+        method: 'GET',
+        headers: auth.authHeaders()
+      }
+    )
   },
   {
     server: false,
-    default: () => ({ approvedVendors: [] as ApprovedVendorRecord[] }),
-  },
-);
+    default: () => ({ approvedVendors: [] as ApprovedVendorRecord[] })
+  }
+)
 
 const filteredRows = computed(() => {
-  const needle = search.value.trim().toLowerCase();
+  const needle = search.value.trim().toLowerCase()
 
   if (!needle) {
-    return data.value.approvedVendors;
+    return data.value.approvedVendors
   }
 
   return data.value.approvedVendors.filter((vendor) => {
@@ -72,122 +72,122 @@ const filteredRows = computed(() => {
       vendor.firstName,
       vendor.lastName,
       vendor.email,
-      vendor.phone || "",
-    ].some((value) => value.toLowerCase().includes(needle));
-  });
-});
+      vendor.phone || ''
+    ].some(value => value.toLowerCase().includes(needle))
+  })
+})
 
 const columns = [
-  { key: "basilId", label: "Basil ID" },
-  { key: "name", label: "Name" },
-  { key: "email", label: "Email" },
-  { key: "phone", label: "Phone" },
-  { key: "linked", label: "Account Status" },
-  { key: "actions", label: "Actions" },
-];
+  { key: 'basilId', label: 'Basil ID' },
+  { key: 'name', label: 'Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'linked', label: 'Account Status' },
+  { key: 'actions', label: 'Actions' }
+]
 
 function openCreateModal(): void {
-  createError.value = null;
-  showCreateModal.value = true;
+  createError.value = null
+  showCreateModal.value = true
 }
 
 function closeCreateModal(): void {
   if (isCreating.value) {
-    return;
+    return
   }
 
-  showCreateModal.value = false;
+  showCreateModal.value = false
 }
 
 function openEditModal(row: ApprovedVendorRecord): void {
-  editError.value = null;
-  editTargetId.value = row.basilId;
-  editForm.basilId = row.basilId;
-  editForm.firstName = row.firstName;
-  editForm.lastName = row.lastName;
-  editForm.email = row.email;
-  editForm.phone = row.phone || "";
-  showEditModal.value = true;
+  editError.value = null
+  editTargetId.value = row.basilId
+  editForm.basilId = row.basilId
+  editForm.firstName = row.firstName
+  editForm.lastName = row.lastName
+  editForm.email = row.email
+  editForm.phone = row.phone || ''
+  showEditModal.value = true
 }
 
 function closeEditModal(): void {
   if (isEditing.value) {
-    return;
+    return
   }
 
-  showEditModal.value = false;
+  showEditModal.value = false
 }
 
 async function submitNewApprovedVendor(): Promise<void> {
-  createError.value = null;
-  isCreating.value = true;
+  createError.value = null
+  isCreating.value = true
 
   try {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
-    await $fetch("/api/admin/approved-vendors", {
-      method: "POST",
+    await $fetch('/api/admin/approved-vendors', {
+      method: 'POST',
       headers: auth.authHeaders(),
       body: {
         basilId: createForm.basilId.trim(),
         firstName: createForm.firstName.trim(),
         lastName: createForm.lastName.trim(),
         email: createForm.email.trim(),
-        phone: createForm.phone.trim() || undefined,
-      },
-    });
+        phone: createForm.phone.trim() || undefined
+      }
+    })
 
-    createForm.basilId = "";
-    createForm.firstName = "";
-    createForm.lastName = "";
-    createForm.email = "";
-    createForm.phone = "";
-    showCreateModal.value = false;
+    createForm.basilId = ''
+    createForm.firstName = ''
+    createForm.lastName = ''
+    createForm.email = ''
+    createForm.phone = ''
+    showCreateModal.value = false
 
-    await refresh();
+    await refresh()
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage;
-    createError.value =
-      statusMessage || "Unable to create approved vendor record.";
+      ?.statusMessage
+    createError.value
+      = statusMessage || 'Unable to create approved vendor record.'
   } finally {
-    isCreating.value = false;
+    isCreating.value = false
   }
 }
 
 async function submitApprovedVendorEdit(): Promise<void> {
   if (!editTargetId.value) {
-    return;
+    return
   }
 
-  editError.value = null;
-  isEditing.value = true;
+  editError.value = null
+  isEditing.value = true
 
   try {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
     await $fetch(`/api/admin/approved-vendors/${editTargetId.value}`, {
-      method: "PATCH",
+      method: 'PATCH',
       headers: auth.authHeaders(),
       body: {
         basilId: editForm.basilId.trim(),
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
         email: editForm.email.trim(),
-        phone: editForm.phone.trim() || undefined,
-      },
-    });
+        phone: editForm.phone.trim() || undefined
+      }
+    })
 
-    showEditModal.value = false;
-    editTargetId.value = null;
-    await refresh();
+    showEditModal.value = false
+    editTargetId.value = null
+    await refresh()
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage;
-    editError.value =
-      statusMessage || "Unable to update approved vendor record.";
+      ?.statusMessage
+    editError.value
+      = statusMessage || 'Unable to update approved vendor record.'
   } finally {
-    isEditing.value = false;
+    isEditing.value = false
   }
 }
 </script>
@@ -195,7 +195,9 @@ async function submitApprovedVendorEdit(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <h1 class="auth-title">Approved vendor mapping</h1>
+      <h1 class="auth-title">
+        Approved vendor mapping
+      </h1>
       <p class="auth-copy">
         Manage approved source records used to map imported sales to vendor
         accounts.
@@ -219,7 +221,7 @@ async function submitApprovedVendorEdit(): Promise<void> {
             v-model="search"
             type="text"
             placeholder="Search by basil ID, name, email, or phone"
-          />
+          >
         </label>
       </form>
     </article>
@@ -234,8 +236,8 @@ async function submitApprovedVendorEdit(): Promise<void> {
       v-else-if="error"
       title="Unable to load approved vendors"
       :message="
-        (error as { statusMessage?: string })?.statusMessage ||
-        'Request failed.'
+        (error as { statusMessage?: string })?.statusMessage
+          || 'Request failed.'
       "
       @retry="refresh"
     />
@@ -246,7 +248,10 @@ async function submitApprovedVendorEdit(): Promise<void> {
       description="Create a new approved vendor record or adjust your search."
     />
 
-    <article v-else class="vendor-panel">
+    <article
+      v-else
+      class="vendor-panel"
+    >
       <AppDataTable
         :columns="columns"
         :rows="filteredRows"
@@ -298,33 +303,58 @@ async function submitApprovedVendorEdit(): Promise<void> {
           </button>
         </div>
 
-        <form class="auth-form" @submit.prevent="submitNewApprovedVendor">
+        <form
+          class="auth-form"
+          @submit.prevent="submitNewApprovedVendor"
+        >
           <label>
             <span>Basil ID</span>
-            <input v-model="createForm.basilId" required type="text" />
+            <input
+              v-model="createForm.basilId"
+              required
+              type="text"
+            >
           </label>
 
           <label>
             <span>First name</span>
-            <input v-model="createForm.firstName" required type="text" />
+            <input
+              v-model="createForm.firstName"
+              required
+              type="text"
+            >
           </label>
 
           <label>
             <span>Last name</span>
-            <input v-model="createForm.lastName" required type="text" />
+            <input
+              v-model="createForm.lastName"
+              required
+              type="text"
+            >
           </label>
 
           <label>
             <span>Email</span>
-            <input v-model="createForm.email" required type="email" />
+            <input
+              v-model="createForm.email"
+              required
+              type="email"
+            >
           </label>
 
           <label>
             <span>Phone (optional)</span>
-            <input v-model="createForm.phone" type="text" />
+            <input
+              v-model="createForm.phone"
+              type="text"
+            >
           </label>
 
-          <p v-if="createError" class="auth-error">
+          <p
+            v-if="createError"
+            class="auth-error"
+          >
             {{ createError }}
           </p>
 
@@ -359,33 +389,58 @@ async function submitApprovedVendorEdit(): Promise<void> {
           </button>
         </div>
 
-        <form class="auth-form" @submit.prevent="submitApprovedVendorEdit">
+        <form
+          class="auth-form"
+          @submit.prevent="submitApprovedVendorEdit"
+        >
           <label>
             <span>Basil ID</span>
-            <input v-model="editForm.basilId" required type="text" />
+            <input
+              v-model="editForm.basilId"
+              required
+              type="text"
+            >
           </label>
 
           <label>
             <span>First name</span>
-            <input v-model="editForm.firstName" required type="text" />
+            <input
+              v-model="editForm.firstName"
+              required
+              type="text"
+            >
           </label>
 
           <label>
             <span>Last name</span>
-            <input v-model="editForm.lastName" required type="text" />
+            <input
+              v-model="editForm.lastName"
+              required
+              type="text"
+            >
           </label>
 
           <label>
             <span>Email</span>
-            <input v-model="editForm.email" required type="email" />
+            <input
+              v-model="editForm.email"
+              required
+              type="email"
+            >
           </label>
 
           <label>
             <span>Phone (optional)</span>
-            <input v-model="editForm.phone" type="text" />
+            <input
+              v-model="editForm.phone"
+              type="text"
+            >
           </label>
 
-          <p v-if="editError" class="auth-error">
+          <p
+            v-if="editError"
+            class="auth-error"
+          >
             {{ editError }}
           </p>
 

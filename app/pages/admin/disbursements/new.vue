@@ -1,98 +1,98 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "admin-auth",
-  layout: "admin",
-});
+  middleware: 'admin-auth',
+  layout: 'admin'
+})
 
 interface DisbursementResponse {
-  idempotentReplay?: boolean;
-  alreadyInProgress?: boolean;
+  idempotentReplay?: boolean
+  alreadyInProgress?: boolean
   disbursement: {
-    disbursementId: string;
-    payoutRequestId: string;
-    methodType: string;
-    providerReferenceId: string;
-    amount: string;
-    currency: string;
-    status: string;
-    disbursedAt: string;
-  };
+    disbursementId: string
+    payoutRequestId: string
+    methodType: string
+    providerReferenceId: string
+    amount: string
+    currency: string
+    status: string
+    disbursedAt: string
+  }
 }
 
-const route = useRoute();
-const router = useRouter();
-const auth = useAdminAuth();
+const route = useRoute()
+const router = useRouter()
+const auth = useAdminAuth()
 
-const isSubmitting = ref(false);
-const submitError = ref<string | null>(null);
-const successMessage = ref<string | null>(null);
+const isSubmitting = ref(false)
+const submitError = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
 
-const payoutRequestId = computed(() => route.query.payoutRequestId as string);
+const payoutRequestId = computed(() => route.query.payoutRequestId as string)
 
 const form = reactive({
-  methodType: "paypal",
-});
+  methodType: 'paypal'
+})
 
 if (!payoutRequestId.value) {
   onBeforeMount(() => {
-    submitError.value =
-      "No payout request specified. Please navigate from a payout detail page.";
-  });
+    submitError.value
+      = 'No payout request specified. Please navigate from a payout detail page.'
+  })
 }
 
 async function submitDisbursement(): Promise<void> {
-  submitError.value = null;
-  successMessage.value = null;
+  submitError.value = null
+  successMessage.value = null
 
   if (!form.methodType.trim()) {
-    submitError.value = "Select a payment method (PayPal or Venmo).";
-    return;
+    submitError.value = 'Select a payment method (PayPal or Venmo).'
+    return
   }
 
-  isSubmitting.value = true;
+  isSubmitting.value = true
 
   try {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
     // Generate a simple idempotency key from timestamp and random string
-    const idempotencyKey = `disbursement_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const idempotencyKey = `disbursement_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
     const result = await $fetch<DisbursementResponse>(
-      "/api/admin/disbursements",
+      '/api/admin/disbursements',
       {
-        method: "POST",
+        method: 'POST',
         headers: auth.authHeaders(),
         body: {
           payoutRequestId: payoutRequestId.value,
           methodType: form.methodType.trim(),
-          idempotencyKey,
-        },
-      },
-    );
+          idempotencyKey
+        }
+      }
+    )
 
     if (result.alreadyInProgress) {
-      successMessage.value = `Disbursement ${result.disbursement.disbursementId} is already in progress. Awaiting PayPal confirmation.`;
+      successMessage.value = `Disbursement ${result.disbursement.disbursementId} is already in progress. Awaiting PayPal confirmation.`
     } else {
-      successMessage.value = `Disbursement ${result.disbursement.disbursementId} initiated. Awaiting PayPal confirmation.`;
+      successMessage.value = `Disbursement ${result.disbursement.disbursementId} initiated. Awaiting PayPal confirmation.`
     }
 
-    form.methodType = "paypal";
+    form.methodType = 'paypal'
 
     setTimeout(() => {
-      router.push(`/admin/payout-requests/${payoutRequestId.value}`);
-    }, 1000);
+      router.push(`/admin/payout-requests/${payoutRequestId.value}`)
+    }, 1000)
   } catch (error: unknown) {
-    const statusMessage = (error as { statusMessage?: string })?.statusMessage;
+    const statusMessage = (error as { statusMessage?: string })?.statusMessage
 
-    if (statusMessage?.includes("PAYOUT_INVALID_STATE_TRANSITION")) {
-      submitError.value =
-        "This payout request is no longer in approved status. Refresh the request page to see the latest status.";
+    if (statusMessage?.includes('PAYOUT_INVALID_STATE_TRANSITION')) {
+      submitError.value
+        = 'This payout request is no longer in approved status. Refresh the request page to see the latest status.'
     } else {
-      submitError.value =
-        statusMessage || "Unable to create disbursement right now.";
+      submitError.value
+        = statusMessage || 'Unable to create disbursement right now.'
     }
   } finally {
-    isSubmitting.value = false;
+    isSubmitting.value = false
   }
 }
 </script>
@@ -100,7 +100,9 @@ async function submitDisbursement(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <h1 class="auth-title">Create disbursement</h1>
+      <h1 class="auth-title">
+        Create disbursement
+      </h1>
       <p class="auth-copy">
         Execute a payment disbursement for an approved payout request using
         PayPal or Venmo.
@@ -132,20 +134,32 @@ async function submitDisbursement(): Promise<void> {
         </p>
       </div>
 
-      <form class="auth-form" @submit.prevent="submitDisbursement">
+      <form
+        class="auth-form"
+        @submit.prevent="submitDisbursement"
+      >
         <label>
           <span>Payment method</span>
-          <select v-model="form.methodType" required>
+          <select
+            v-model="form.methodType"
+            required
+          >
             <option value="paypal">PayPal</option>
             <option value="venmo">Venmo</option>
           </select>
         </label>
 
-        <p v-if="submitError" class="auth-error">
+        <p
+          v-if="submitError"
+          class="auth-error"
+        >
           {{ submitError }}
         </p>
 
-        <p v-if="successMessage" class="auth-success">
+        <p
+          v-if="successMessage"
+          class="auth-success"
+        >
           {{ successMessage }}
         </p>
 

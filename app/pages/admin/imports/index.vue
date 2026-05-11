@@ -1,141 +1,141 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "admin-auth",
-  layout: "admin",
-});
+  middleware: 'admin-auth',
+  layout: 'admin'
+})
 
 interface AdminImportError {
-  code: string;
-  rowNumber: number;
-  reason: string;
-  hint: string;
+  code: string
+  rowNumber: number
+  reason: string
+  hint: string
 }
 
 interface AdminImportRecord {
-  batchId: string;
-  sourcePeriod: string;
-  uploadedBy: string;
-  uploadedAt: string;
-  status: "completed" | "failed";
+  batchId: string
+  sourcePeriod: string
+  uploadedBy: string
+  uploadedAt: string
+  status: 'completed' | 'failed'
   summary: {
-    total: number;
-    accepted: number;
-    rejected: number;
-    nonVendorRejected: number;
-    duplicates: number;
-  };
-  errors: AdminImportError[];
-  unmappedSources: string[];
+    total: number
+    accepted: number
+    rejected: number
+    nonVendorRejected: number
+    duplicates: number
+  }
+  errors: AdminImportError[]
+  unmappedSources: string[]
 }
 
 interface ImportUploadResponse {
-  batchId: string;
+  batchId: string
   summary: {
-    total: number;
-    accepted: number;
-    rejected: number;
-    nonVendorRejected: number;
-    duplicates: number;
-  };
+    total: number
+    accepted: number
+    rejected: number
+    nonVendorRejected: number
+    duplicates: number
+  }
 }
 
-const auth = useAdminAuth();
-const showUploadModal = ref(false);
-const isUploading = ref(false);
-const uploadError = ref<string | null>(null);
-const uploadSuccess = ref<ImportUploadResponse | null>(null);
-const selectedFileName = ref("");
-const fileInput = ref<HTMLInputElement | null>(null);
+const auth = useAdminAuth()
+const showUploadModal = ref(false)
+const isUploading = ref(false)
+const uploadError = ref<string | null>(null)
+const uploadSuccess = ref<ImportUploadResponse | null>(null)
+const selectedFileName = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const filters = reactive({
-  status: "all",
-  sourcePeriod: "",
-  dateFrom: "",
-  dateTo: "",
-});
+  status: 'all',
+  sourcePeriod: '',
+  dateFrom: '',
+  dateTo: ''
+})
 
 const uploadForm = reactive({
-  sourcePeriod: "",
-  file: null as File | null,
-});
+  sourcePeriod: '',
+  file: null as File | null
+})
 
 const columns = [
-  { key: "uploadedAt", label: "Uploaded" },
-  { key: "sourcePeriod", label: "Source Period" },
-  { key: "status", label: "Status" },
-  { key: "summary", label: "Summary" },
-  { key: "uploadedBy", label: "Uploaded By" },
-  { key: "actions", label: "Actions" },
-];
+  { key: 'uploadedAt', label: 'Uploaded' },
+  { key: 'sourcePeriod', label: 'Source Period' },
+  { key: 'status', label: 'Status' },
+  { key: 'summary', label: 'Summary' },
+  { key: 'uploadedBy', label: 'Uploaded By' },
+  { key: 'actions', label: 'Actions' }
+]
 
 function toIsoBoundary(
   value: string,
-  boundary: "start" | "end",
+  boundary: 'start' | 'end'
 ): string | undefined {
   if (!value) {
-    return undefined;
+    return undefined
   }
 
-  const suffix = boundary === "start" ? "T00:00:00.000Z" : "T23:59:59.999Z";
-  return new Date(`${value}${suffix}`).toISOString();
+  const suffix = boundary === 'start' ? 'T00:00:00.000Z' : 'T23:59:59.999Z'
+  return new Date(`${value}${suffix}`).toISOString()
 }
 
 function formatDate(value: string): string {
-  const parsed = new Date(value);
+  const parsed = new Date(value)
 
   if (Number.isNaN(parsed.getTime())) {
-    return value;
+    return value
   }
 
-  return parsed.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
 }
 
 function toBatchDetailPath(batchId: string): string {
-  return `/admin/imports/${encodeURIComponent(batchId)}`;
+  return `/admin/imports/${encodeURIComponent(batchId)}`
 }
 
 const { data, pending, error, refresh } = await useAsyncData(
-  "admin-imports-list",
+  'admin-imports-list',
   async () => {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
     const query: Record<string, string | number> = {
-      limit: 100,
-    };
+      limit: 100
+    }
 
-    if (filters.status !== "all") {
-      query.status = filters.status;
+    if (filters.status !== 'all') {
+      query.status = filters.status
     }
 
     if (filters.sourcePeriod.trim()) {
-      query.sourcePeriod = filters.sourcePeriod.trim();
+      query.sourcePeriod = filters.sourcePeriod.trim()
     }
 
-    const dateFrom = toIsoBoundary(filters.dateFrom, "start");
-    const dateTo = toIsoBoundary(filters.dateTo, "end");
+    const dateFrom = toIsoBoundary(filters.dateFrom, 'start')
+    const dateTo = toIsoBoundary(filters.dateTo, 'end')
 
     if (dateFrom) {
-      query.dateFrom = dateFrom;
+      query.dateFrom = dateFrom
     }
 
     if (dateTo) {
-      query.dateTo = dateTo;
+      query.dateTo = dateTo
     }
 
     return await $fetch<{ imports: AdminImportRecord[] }>(
-      "/api/admin/imports",
+      '/api/admin/imports',
       {
-        method: "GET",
+        method: 'GET',
         headers: auth.authHeaders(),
-        query,
-      },
-    );
+        query
+      }
+    )
   },
   {
     server: false,
@@ -143,93 +143,93 @@ const { data, pending, error, refresh } = await useAsyncData(
       () => filters.status,
       () => filters.sourcePeriod,
       () => filters.dateFrom,
-      () => filters.dateTo,
+      () => filters.dateTo
     ],
-    default: () => ({ imports: [] as AdminImportRecord[] }),
-  },
-);
+    default: () => ({ imports: [] as AdminImportRecord[] })
+  }
+)
 
 const metrics = computed(() => {
-  const imports = data.value.imports;
+  const imports = data.value.imports
 
   return {
     total: imports.length,
-    flagged: imports.filter((batch) => batch.summary.rejected > 0).length,
-    failed: imports.filter((batch) => batch.status === "failed").length,
-    rows: imports.reduce((sum, batch) => sum + batch.summary.total, 0),
-  };
-});
+    flagged: imports.filter(batch => batch.summary.rejected > 0).length,
+    failed: imports.filter(batch => batch.status === 'failed').length,
+    rows: imports.reduce((sum, batch) => sum + batch.summary.total, 0)
+  }
+})
 
 function openUploadModal(): void {
-  uploadError.value = null;
-  uploadSuccess.value = null;
-  showUploadModal.value = true;
+  uploadError.value = null
+  uploadSuccess.value = null
+  showUploadModal.value = true
 }
 
 function closeUploadModal(): void {
   if (isUploading.value) {
-    return;
+    return
   }
 
-  showUploadModal.value = false;
+  showUploadModal.value = false
 }
 
 function updateFileSelection(event: Event): void {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0] ?? null;
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
 
-  uploadForm.file = file;
-  selectedFileName.value = file?.name ?? "";
+  uploadForm.file = file
+  selectedFileName.value = file?.name ?? ''
 }
 
 async function submitSalesDetailUpload(): Promise<void> {
-  uploadError.value = null;
-  uploadSuccess.value = null;
+  uploadError.value = null
+  uploadSuccess.value = null
 
   if (!uploadForm.sourcePeriod.trim()) {
-    uploadError.value = "Enter the source period for this report.";
-    return;
+    uploadError.value = 'Enter the source period for this report.'
+    return
   }
 
   if (!uploadForm.file) {
-    uploadError.value = "Select a CSV report to upload.";
-    return;
+    uploadError.value = 'Select a CSV report to upload.'
+    return
   }
 
-  isUploading.value = true;
+  isUploading.value = true
 
   try {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
-    const payload = new FormData();
-    payload.append("sourcePeriod", uploadForm.sourcePeriod.trim());
-    payload.append("file", uploadForm.file);
+    const payload = new FormData()
+    payload.append('sourcePeriod', uploadForm.sourcePeriod.trim())
+    payload.append('file', uploadForm.file)
 
     uploadSuccess.value = await $fetch<ImportUploadResponse>(
-      "/api/admin/sales/imports",
+      '/api/admin/sales/imports',
       {
-        method: "POST",
+        method: 'POST',
         headers: auth.authHeaders(),
-        body: payload,
-      },
-    );
+        body: payload
+      }
+    )
 
-    uploadForm.sourcePeriod = "";
-    uploadForm.file = null;
-    selectedFileName.value = "";
+    uploadForm.sourcePeriod = ''
+    uploadForm.file = null
+    selectedFileName.value = ''
 
     if (fileInput.value) {
-      fileInput.value.value = "";
+      fileInput.value.value = ''
     }
 
-    await refresh();
+    await refresh()
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage;
-    uploadError.value =
-      statusMessage || "Unable to upload this sales detail report right now.";
+      ?.statusMessage
+    uploadError.value
+      = statusMessage || 'Unable to upload this sales detail report right now.'
   } finally {
-    isUploading.value = false;
+    isUploading.value = false
   }
 }
 </script>
@@ -237,7 +237,9 @@ async function submitSalesDetailUpload(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <h1 class="auth-title">Import history</h1>
+      <h1 class="auth-title">
+        Import history
+      </h1>
       <p class="auth-copy">
         Filter import runs by status, period, and upload date to review batch
         health.
@@ -262,28 +264,36 @@ async function submitSalesDetailUpload(): Promise<void> {
 
     <section class="admin-cards">
       <article class="admin-card">
-        <p class="admin-card__label">Batches in view</p>
+        <p class="admin-card__label">
+          Batches in view
+        </p>
         <p class="admin-card__value">
           {{ metrics.total }}
         </p>
       </article>
 
       <article class="admin-card">
-        <p class="admin-card__label">Flagged batches</p>
+        <p class="admin-card__label">
+          Flagged batches
+        </p>
         <p class="admin-card__value">
           {{ metrics.flagged }}
         </p>
       </article>
 
       <article class="admin-card">
-        <p class="admin-card__label">Failed batches</p>
+        <p class="admin-card__label">
+          Failed batches
+        </p>
         <p class="admin-card__value">
           {{ metrics.failed }}
         </p>
       </article>
 
       <article class="admin-card">
-        <p class="admin-card__label">Rows in view</p>
+        <p class="admin-card__label">
+          Rows in view
+        </p>
         <p class="admin-card__value">
           {{ metrics.rows }}
         </p>
@@ -309,17 +319,23 @@ async function submitSalesDetailUpload(): Promise<void> {
             v-model="filters.sourcePeriod"
             type="text"
             placeholder="2026-Q2"
-          />
+          >
         </label>
 
         <label>
           <span>Uploaded from</span>
-          <input v-model="filters.dateFrom" type="date" />
+          <input
+            v-model="filters.dateFrom"
+            type="date"
+          >
         </label>
 
         <label>
           <span>Uploaded to</span>
-          <input v-model="filters.dateTo" type="date" />
+          <input
+            v-model="filters.dateTo"
+            type="date"
+          >
         </label>
       </form>
     </article>
@@ -334,8 +350,8 @@ async function submitSalesDetailUpload(): Promise<void> {
       v-else-if="error"
       title="Unable to load imports"
       :message="
-        (error as { statusMessage?: string })?.statusMessage ||
-        'Import history request failed.'
+        (error as { statusMessage?: string })?.statusMessage
+          || 'Import history request failed.'
       "
       @retry="refresh"
     />
@@ -346,7 +362,10 @@ async function submitSalesDetailUpload(): Promise<void> {
       description="Adjust the filters or upload a new sales batch to get started."
     />
 
-    <article v-else class="vendor-panel">
+    <article
+      v-else
+      class="vendor-panel"
+    >
       <h2>Batch history</h2>
 
       <AppDataTable
@@ -358,7 +377,7 @@ async function submitSalesDetailUpload(): Promise<void> {
           'status',
           'sourcePeriod',
           'summary',
-          'actions',
+          'actions'
         ]"
       >
         <template #cell:uploadedAt="{ row }">
@@ -402,7 +421,10 @@ async function submitSalesDetailUpload(): Promise<void> {
           period for reconciliation.
         </p>
 
-        <form class="auth-form" @submit.prevent="submitSalesDetailUpload">
+        <form
+          class="auth-form"
+          @submit.prevent="submitSalesDetailUpload"
+        >
           <label>
             <span>Source period</span>
             <input
@@ -410,7 +432,7 @@ async function submitSalesDetailUpload(): Promise<void> {
               type="text"
               placeholder="2026-Q2"
               required
-            />
+            >
           </label>
 
           <label>
@@ -421,18 +443,27 @@ async function submitSalesDetailUpload(): Promise<void> {
               accept=".csv,text/csv"
               required
               @change="updateFileSelection"
-            />
+            >
           </label>
 
-          <p v-if="selectedFileName" class="panel-copy">
+          <p
+            v-if="selectedFileName"
+            class="panel-copy"
+          >
             Selected file: <strong>{{ selectedFileName }}</strong>
           </p>
 
-          <p v-if="uploadError" class="auth-error">
+          <p
+            v-if="uploadError"
+            class="auth-error"
+          >
             {{ uploadError }}
           </p>
 
-          <p v-if="uploadSuccess" class="auth-success">
+          <p
+            v-if="uploadSuccess"
+            class="auth-success"
+          >
             Report uploaded.
             <a :href="toBatchDetailPath(uploadSuccess.batchId)">Review batch</a>
           </p>

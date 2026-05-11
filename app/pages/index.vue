@@ -1,11 +1,11 @@
 <script setup lang="ts">
-const auth = useVendorAuth();
-const hasVendorSession = ref(false);
+const auth = useVendorAuth()
+const hasVendorSession = ref(false)
 
 onMounted(async () => {
-  await auth.ensureInitialized();
-  hasVendorSession.value = !!auth.token.value;
-});
+  await auth.ensureInitialized()
+  hasVendorSession.value = !!auth.token.value
+})
 </script>
 
 <template>
@@ -41,7 +41,10 @@ onMounted(async () => {
         >
           Create account
         </NuxtLink>
-        <NuxtLink to="/admin" class="portal-button portal-button--secondary">
+        <NuxtLink
+          to="/admin"
+          class="portal-button portal-button--secondary"
+        >
           Admin console
         </NuxtLink>
       </div>
@@ -49,7 +52,9 @@ onMounted(async () => {
 
     <section class="home-features">
       <article class="home-feature-card">
-        <p class="home-feature-card__eyebrow">For Vendors</p>
+        <p class="home-feature-card__eyebrow">
+          For Vendors
+        </p>
         <h2>Financial visibility</h2>
         <p>
           See imported sales, ledger activity, balances, and payout request
@@ -58,7 +63,9 @@ onMounted(async () => {
       </article>
 
       <article class="home-feature-card">
-        <p class="home-feature-card__eyebrow">For Operations</p>
+        <p class="home-feature-card__eyebrow">
+          For Operations
+        </p>
         <h2>Reliable workflows</h2>
         <p>
           Manage imports, payout reviews, exception handling, and vendor records
@@ -67,7 +74,9 @@ onMounted(async () => {
       </article>
 
       <article class="home-feature-card">
-        <p class="home-feature-card__eyebrow">For Compliance</p>
+        <p class="home-feature-card__eyebrow">
+          For Compliance
+        </p>
         <h2>Audit-ready trail</h2>
         <p>
           Track key events, disbursement decisions, and source reconciliation to

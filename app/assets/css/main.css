@@ -955,6 +955,10 @@ body {
 }
 
 @media (max-width: 767px) {
+  body {
+    overflow-x: hidden;
+  }
+
   .app-main__inner {
     width: min(calc(100% - 1rem), var(--portal-page-max-width));
   }
@@ -1002,6 +1006,15 @@ body {
 
   .table-shell:not(.table-shell--preserve-columns) .table-shell__mobile {
     display: block;
+  }
+
+  .table-shell {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-shell__table-root {
+    overflow-x: visible;
   }
 
   .table-shell--preserve-columns .table-shell__desktop {

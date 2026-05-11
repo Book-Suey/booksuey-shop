@@ -1,92 +1,94 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "vendor-auth",
-  layout: "vendor",
-});
+  middleware: 'vendor-auth',
+  layout: 'vendor'
+})
 
 interface VendorSale {
-  saleRecordId: string;
-  sourceBatchId: string;
-  sourcePeriod: string;
-  soldAt: string;
-  title: string;
-  quantity: number;
-  unit: string;
-  discount: string;
-  extended: string;
-  grossAmount: string;
-  commissionAmount: string;
-  currency: string;
+  saleRecordId: string
+  sourceBatchId: string
+  sourcePeriod: string
+  soldAt: string
+  title: string
+  quantity: number
+  unit: string
+  discount: string
+  extended: string
+  grossAmount: string
+  commissionAmount: string
+  currency: string
 }
 
-const auth = useVendorAuth();
-const hasMounted = ref(false);
+const auth = useVendorAuth()
+const hasMounted = ref(false)
 
 const columns = [
-  { key: "soldAt", label: "Sold At" },
-  { key: "sourcePeriod", label: "Period" },
-  { key: "title", label: "Title" },
-  { key: "quantity", label: "Qty" },
-  { key: "unit", label: "Unit Price" },
-  { key: "discount", label: "Discount" },
-  { key: "grossAmount", label: "Gross Sale" },
-  { key: "commissionAmount", label: "Commission" },
-];
+  { key: 'soldAt', label: 'Sold At' },
+  { key: 'sourcePeriod', label: 'Period' },
+  { key: 'title', label: 'Title' },
+  { key: 'quantity', label: 'Qty' },
+  { key: 'unit', label: 'Unit Price' },
+  { key: 'discount', label: 'Discount' },
+  { key: 'grossAmount', label: 'Gross Sale' },
+  { key: 'commissionAmount', label: 'Commission' }
+]
 
-function formatCurrency(amount: string, currency = "USD"): string {
-  const parsed = Number.parseFloat(amount);
+function formatCurrency(amount: string, currency = 'USD'): string {
+  const parsed = Number.parseFloat(amount)
 
   if (Number.isNaN(parsed)) {
-    return amount;
+    return amount
   }
 
-  return parsed.toLocaleString("en-US", {
-    style: "currency",
-    currency,
-  });
+  return parsed.toLocaleString('en-US', {
+    style: 'currency',
+    currency
+  })
 }
 
 function formatDate(value: string): string {
-  const parsed = new Date(value);
+  const parsed = new Date(value)
 
   if (Number.isNaN(parsed.getTime())) {
-    return value;
+    return value
   }
 
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return parsed.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
 }
 
 const { data, pending, error, refresh } = await useAsyncData(
-  "vendor-sales-page",
+  'vendor-sales-page',
   async () => {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
-    return await $fetch<{ sales: VendorSale[] }>("/api/vendor/sales", {
-      method: "GET",
-      headers: auth.authHeaders(),
-    });
+    return await $fetch<{ sales: VendorSale[] }>('/api/vendor/sales', {
+      method: 'GET',
+      headers: auth.authHeaders()
+    })
   },
   {
     server: false,
     immediate: false,
-    default: () => ({ sales: [] as VendorSale[] }),
-  },
-);
+    default: () => ({ sales: [] as VendorSale[] })
+  }
+)
 
 onMounted(async () => {
-  hasMounted.value = true;
-  await refresh();
-});
+  hasMounted.value = true
+  await refresh()
+})
 </script>
 
 <template>
   <section class="vendor-page">
     <header class="vendor-page__header">
-      <h1 class="auth-title">Imported sales records</h1>
+      <h1 class="auth-title">
+        Imported sales records
+      </h1>
       <p class="auth-copy">
         Review every imported sale record by source period.
       </p>
@@ -102,8 +104,8 @@ onMounted(async () => {
       v-else-if="hasMounted && error"
       title="Unable to load sales"
       :message="
-        (error as { statusMessage?: string })?.statusMessage ||
-        'Sales request failed.'
+        (error as { statusMessage?: string })?.statusMessage
+          || 'Sales request failed.'
       "
       @retry="refresh"
     />
@@ -114,7 +116,10 @@ onMounted(async () => {
       description="Sales rows will appear after an admin import assigns records to your vendor account."
     />
 
-    <article v-else class="vendor-panel">
+    <article
+      v-else
+      class="vendor-panel"
+    >
       <AppDataTable
         :columns="columns"
         :rows="data.sales"
@@ -139,7 +144,7 @@ onMounted(async () => {
           {{
             formatCurrency(
               row.commissionAmount as string,
-              row.currency as string,
+              row.currency as string
             )
           }}
         </template>

@@ -1,196 +1,196 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: "admin-auth",
-  layout: "admin",
-});
+  middleware: 'admin-auth',
+  layout: 'admin'
+})
 
 interface NonVendorSourceRecord {
-  sourceName: string;
-  normalizedSource: string;
-  createdAt: string;
-  updatedAt: string;
+  sourceName: string
+  normalizedSource: string
+  createdAt: string
+  updatedAt: string
 }
 
-const auth = useAdminAuth();
-const search = ref("");
-const showCreateModal = ref(false);
-const showEditModal = ref(false);
-const isCreating = ref(false);
-const isEditing = ref(false);
-const isDeleting = ref(false);
-const createError = ref<string | null>(null);
-const editError = ref<string | null>(null);
-const deleteError = ref<string | null>(null);
-const editTargetNormalizedSource = ref<string | null>(null);
+const auth = useAdminAuth()
+const search = ref('')
+const showCreateModal = ref(false)
+const showEditModal = ref(false)
+const isCreating = ref(false)
+const isEditing = ref(false)
+const isDeleting = ref(false)
+const createError = ref<string | null>(null)
+const editError = ref<string | null>(null)
+const deleteError = ref<string | null>(null)
+const editTargetNormalizedSource = ref<string | null>(null)
 
 const createForm = reactive({
-  sourceName: "",
-});
+  sourceName: ''
+})
 
 const editForm = reactive({
-  sourceName: "",
-});
+  sourceName: ''
+})
 
 const { data, pending, error, refresh } = await useAsyncData(
-  "admin-non-vendor-sources-list",
+  'admin-non-vendor-sources-list',
   async () => {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
     return await $fetch<{ nonVendorSources: NonVendorSourceRecord[] }>(
-      "/api/admin/non-vendor-sources",
+      '/api/admin/non-vendor-sources',
       {
-        method: "GET",
-        headers: auth.authHeaders(),
-      },
-    );
+        method: 'GET',
+        headers: auth.authHeaders()
+      }
+    )
   },
   {
     server: false,
-    default: () => ({ nonVendorSources: [] as NonVendorSourceRecord[] }),
-  },
-);
+    default: () => ({ nonVendorSources: [] as NonVendorSourceRecord[] })
+  }
+)
 
 const filteredRows = computed(() => {
-  const needle = search.value.trim().toLowerCase();
+  const needle = search.value.trim().toLowerCase()
 
   if (!needle) {
-    return data.value.nonVendorSources;
+    return data.value.nonVendorSources
   }
 
   return data.value.nonVendorSources.filter((source) => {
-    return [source.sourceName, source.normalizedSource].some((value) =>
-      value.toLowerCase().includes(needle),
-    );
-  });
-});
+    return [source.sourceName, source.normalizedSource].some(value =>
+      value.toLowerCase().includes(needle)
+    )
+  })
+})
 
 const columns = [
-  { key: "sourceName", label: "Source Name" },
-  { key: "normalizedSource", label: "Normalized" },
-  { key: "actions", label: "Actions" },
-];
+  { key: 'sourceName', label: 'Source Name' },
+  { key: 'normalizedSource', label: 'Normalized' },
+  { key: 'actions', label: 'Actions' }
+]
 
 function openCreateModal(): void {
-  createError.value = null;
-  showCreateModal.value = true;
+  createError.value = null
+  showCreateModal.value = true
 }
 
 function closeCreateModal(): void {
   if (isCreating.value) {
-    return;
+    return
   }
 
-  showCreateModal.value = false;
+  showCreateModal.value = false
 }
 
 function openEditModal(row: NonVendorSourceRecord): void {
-  editError.value = null;
-  deleteError.value = null;
-  editTargetNormalizedSource.value = row.normalizedSource;
-  editForm.sourceName = row.sourceName;
-  showEditModal.value = true;
+  editError.value = null
+  deleteError.value = null
+  editTargetNormalizedSource.value = row.normalizedSource
+  editForm.sourceName = row.sourceName
+  showEditModal.value = true
 }
 
 function closeEditModal(): void {
   if (isEditing.value || isDeleting.value) {
-    return;
+    return
   }
 
-  showEditModal.value = false;
+  showEditModal.value = false
 }
 
 async function submitNewNonVendorSource(): Promise<void> {
-  createError.value = null;
-  isCreating.value = true;
+  createError.value = null
+  isCreating.value = true
 
   try {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
-    await $fetch("/api/admin/non-vendor-sources", {
-      method: "POST",
+    await $fetch('/api/admin/non-vendor-sources', {
+      method: 'POST',
       headers: auth.authHeaders(),
       body: {
-        sourceName: createForm.sourceName.trim(),
-      },
-    });
+        sourceName: createForm.sourceName.trim()
+      }
+    })
 
-    createForm.sourceName = "";
-    showCreateModal.value = false;
-    await refresh();
+    createForm.sourceName = ''
+    showCreateModal.value = false
+    await refresh()
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage;
-    createError.value =
-      statusMessage || "Unable to create verified non-vendor source.";
+      ?.statusMessage
+    createError.value
+      = statusMessage || 'Unable to create verified non-vendor source.'
   } finally {
-    isCreating.value = false;
+    isCreating.value = false
   }
 }
 
 async function submitNonVendorSourceEdit(): Promise<void> {
   if (!editTargetNormalizedSource.value) {
-    return;
+    return
   }
 
-  editError.value = null;
-  isEditing.value = true;
+  editError.value = null
+  isEditing.value = true
 
   try {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
     await $fetch(
       `/api/admin/non-vendor-sources/${encodeURIComponent(editTargetNormalizedSource.value)}`,
       {
-        method: "PATCH",
+        method: 'PATCH',
         headers: auth.authHeaders(),
         body: {
-          sourceName: editForm.sourceName.trim(),
-        },
-      },
-    );
+          sourceName: editForm.sourceName.trim()
+        }
+      }
+    )
 
-    showEditModal.value = false;
-    editTargetNormalizedSource.value = null;
-    await refresh();
+    showEditModal.value = false
+    editTargetNormalizedSource.value = null
+    await refresh()
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage;
-    editError.value =
-      statusMessage || "Unable to update verified non-vendor source.";
+      ?.statusMessage
+    editError.value
+      = statusMessage || 'Unable to update verified non-vendor source.'
   } finally {
-    isEditing.value = false;
+    isEditing.value = false
   }
 }
 
 async function deleteNonVendorSource(): Promise<void> {
   if (!editTargetNormalizedSource.value) {
-    return;
+    return
   }
 
-  deleteError.value = null;
-  isDeleting.value = true;
+  deleteError.value = null
+  isDeleting.value = true
 
   try {
-    await auth.ensureInitialized();
+    await auth.ensureInitialized()
 
     await $fetch(
       `/api/admin/non-vendor-sources/${encodeURIComponent(editTargetNormalizedSource.value)}`,
       {
-        method: "DELETE",
-        headers: auth.authHeaders(),
-      },
-    );
+        method: 'DELETE',
+        headers: auth.authHeaders()
+      }
+    )
 
-    showEditModal.value = false;
-    editTargetNormalizedSource.value = null;
-    await refresh();
+    showEditModal.value = false
+    editTargetNormalizedSource.value = null
+    await refresh()
   } catch (requestError: unknown) {
     const statusMessage = (requestError as { statusMessage?: string })
-      ?.statusMessage;
-    deleteError.value =
-      statusMessage || "Unable to delete verified non-vendor source.";
+      ?.statusMessage
+    deleteError.value
+      = statusMessage || 'Unable to delete verified non-vendor source.'
   } finally {
-    isDeleting.value = false;
+    isDeleting.value = false
   }
 }
 </script>
@@ -198,7 +198,9 @@ async function deleteNonVendorSource(): Promise<void> {
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <h1 class="auth-title">Verified non-vendor sources</h1>
+      <h1 class="auth-title">
+        Verified non-vendor sources
+      </h1>
       <p class="auth-copy">
         Maintain source names that should be rejected from vendor sales imports
         without being treated as import errors.
@@ -222,7 +224,7 @@ async function deleteNonVendorSource(): Promise<void> {
             v-model="search"
             type="text"
             placeholder="Search by source name"
-          />
+          >
         </label>
       </form>
     </article>
@@ -237,8 +239,8 @@ async function deleteNonVendorSource(): Promise<void> {
       v-else-if="error"
       title="Unable to load non-vendor sources"
       :message="
-        (error as { statusMessage?: string })?.statusMessage ||
-        'Request failed.'
+        (error as { statusMessage?: string })?.statusMessage
+          || 'Request failed.'
       "
       @retry="refresh"
     />
@@ -249,7 +251,10 @@ async function deleteNonVendorSource(): Promise<void> {
       description="Create a new record or adjust your search."
     />
 
-    <article v-else class="vendor-panel">
+    <article
+      v-else
+      class="vendor-panel"
+    >
       <AppDataTable
         :columns="columns"
         :rows="filteredRows"
@@ -285,13 +290,23 @@ async function deleteNonVendorSource(): Promise<void> {
           </button>
         </div>
 
-        <form class="auth-form" @submit.prevent="submitNewNonVendorSource">
+        <form
+          class="auth-form"
+          @submit.prevent="submitNewNonVendorSource"
+        >
           <label>
             <span>Source name</span>
-            <input v-model="createForm.sourceName" required type="text" />
+            <input
+              v-model="createForm.sourceName"
+              required
+              type="text"
+            >
           </label>
 
-          <p v-if="createError" class="auth-error">
+          <p
+            v-if="createError"
+            class="auth-error"
+          >
             {{ createError }}
           </p>
 
@@ -326,17 +341,30 @@ async function deleteNonVendorSource(): Promise<void> {
           </button>
         </div>
 
-        <form class="auth-form" @submit.prevent="submitNonVendorSourceEdit">
+        <form
+          class="auth-form"
+          @submit.prevent="submitNonVendorSourceEdit"
+        >
           <label>
             <span>Source name</span>
-            <input v-model="editForm.sourceName" required type="text" />
+            <input
+              v-model="editForm.sourceName"
+              required
+              type="text"
+            >
           </label>
 
-          <p v-if="editError" class="auth-error">
+          <p
+            v-if="editError"
+            class="auth-error"
+          >
             {{ editError }}
           </p>
 
-          <p v-if="deleteError" class="auth-error">
+          <p
+            v-if="deleteError"
+            class="auth-error"
+          >
             {{ deleteError }}
           </p>
 
