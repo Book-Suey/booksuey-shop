@@ -39,6 +39,7 @@ async function buildExistingDisbursementResponse(input: {
   payoutRequestId: string
   idempotentReplay?: boolean
   alreadyInProgress?: boolean
+  alreadyCompleted?: boolean
 }) {
   const payout = await PayoutRequest.findOne({ payoutRequestId: input.payoutRequestId })
   const vendor = payout ? await Vendor.findOne({ vendorId: payout.vendorId }) : null
@@ -52,6 +53,7 @@ async function buildExistingDisbursementResponse(input: {
   return {
     idempotentReplay: !!input.idempotentReplay,
     alreadyInProgress: !!input.alreadyInProgress,
+    alreadyCompleted: !!input.alreadyCompleted,
     disbursement: {
       disbursementId: input.existingDisbursement.disbursementId,
       payoutRequestId: input.existingDisbursement.payoutRequestId,
@@ -136,6 +138,25 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const completedPayout = await PayoutRequest.findOne({
+    payoutRequestId: payload.payoutRequestId,
+    status: 'paid'
+  })
+
+  if (completedPayout) {
+    const completedDisbursement = await PaymentDisbursement.findOne({
+      payoutRequestId: payload.payoutRequestId
+    }).sort({ createdAt: -1 })
+
+    if (completedDisbursement) {
+      return await buildExistingDisbursementResponse({
+        existingDisbursement: completedDisbursement,
+        payoutRequestId: payload.payoutRequestId,
+        alreadyCompleted: true
+      })
+    }
+  }
+
   const initialized = await runWithOptionalTransaction(async (session) => {
     const payoutRequest = await PayoutRequest.findOne(
       { payoutRequestId: payload.payoutRequestId },
@@ -153,7 +174,7 @@ export default defineEventHandler(async (event) => {
     if (payoutRequest.status !== 'approved') {
       throw createError({
         statusCode: 409,
-        statusMessage: 'PAYOUT_INVALID_STATE_TRANSITION: Disburse attempted from invalid status'
+        statusMessage: `PAYOUT_INVALID_STATE_TRANSITION: Disburse attempted from invalid status (${payoutRequest.status})`
       })
     }
 

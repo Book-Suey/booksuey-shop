@@ -123,7 +123,7 @@ export async function executePayout(input: ExecutePayoutInput): Promise<ExecuteP
   const payoutResult = await createBatchPayout({
     senderBatchId: input.idempotencyKey,
     emailSubject: 'You have a payout from Book Suey',
-    emailMessage: 'Your payout has been initiated and will complete shortly.',
+    emailMessage: 'Your consignment payout request has been accepted! Thank you for being a part of the Book Suey community.',
     items: [payoutItem]
   })
 

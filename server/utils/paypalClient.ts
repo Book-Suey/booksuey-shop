@@ -14,7 +14,7 @@ interface AccessTokenCache {
 }
 
 export interface PayPalPayoutItem {
-  recipientType: 'EMAIL' | 'VENMO_ACCOUNT'
+  recipientType: 'EMAIL' | 'PHONE' | 'PAYPAL_ID' | 'USER_HANDLE'
   amount: {
     value: string
     currency: 'USD'

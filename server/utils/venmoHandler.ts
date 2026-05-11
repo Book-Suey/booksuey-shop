@@ -25,7 +25,7 @@ export function formatVenmoRecipient(input: {
   }
 
   return {
-    recipientType: 'VENMO_ACCOUNT',
+    recipientType: 'USER_HANDLE',
     receiver: normalizedHandle,
     recipientWallet: 'VENMO',
     senderItemId: input.senderItemId,

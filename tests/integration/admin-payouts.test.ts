@@ -560,4 +560,64 @@ describe('Admin Payout Review and Disbursement Endpoints', () => {
     expect(second.payoutRequest.status).toBe('disbursing')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it('returns existing completed disbursement for duplicate attempts after payout is paid', async () => {
+    await seedVendor('vendor_disburse_paid_duplicate')
+    await seedRequestedPayoutWithReservation({
+      payoutRequestId: 'payout_disburse_paid_duplicate',
+      vendorId: 'vendor_disburse_paid_duplicate',
+      amount: '4.75',
+      requestedAt: new Date('2026-05-06T09:00:00.000Z')
+    })
+
+    await PayoutRequest.updateOne(
+      { payoutRequestId: 'payout_disburse_paid_duplicate' },
+      {
+        $set: {
+          status: 'paid',
+          approvedAt: new Date('2026-05-06T09:10:00.000Z'),
+          paidAt: new Date('2026-05-06T09:20:00.000Z')
+        }
+      }
+    )
+
+    await PaymentDisbursement.create({
+      disbursementId: 'disb_paid_duplicate',
+      payoutRequestId: 'payout_disburse_paid_duplicate',
+      idempotencyKey: 'idem-paid-duplicate-1',
+      methodType: 'venmo',
+      providerReferenceId: 'paid-batch-duplicate',
+      providerItemId: 'paid-item-duplicate',
+      amount: '4.75',
+      currency: 'USD',
+      status: 'paid',
+      disbursedAt: new Date('2026-05-06T09:20:00.000Z')
+    })
+
+    const { default: createDisbursement } = await import('../../server/api/admin/disbursements.post')
+
+    const replayResult = await createDisbursement({
+      headers: adminHeaders(),
+      body: {
+        payoutRequestId: 'payout_disburse_paid_duplicate',
+        methodType: 'venmo',
+        idempotencyKey: 'idem-paid-duplicate-2'
+      }
+    }) as {
+      alreadyCompleted?: boolean
+      disbursement: {
+        disbursementId: string
+        status: string
+      }
+      payoutRequest: {
+        status: string
+      } | null
+    }
+
+    expect(replayResult.alreadyCompleted).toBe(true)
+    expect(replayResult.disbursement.disbursementId).toBe('disb_paid_duplicate')
+    expect(replayResult.disbursement.status).toBe('paid')
+    expect(replayResult.payoutRequest?.status).toBe('paid')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
