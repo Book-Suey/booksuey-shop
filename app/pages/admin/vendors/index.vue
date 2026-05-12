@@ -54,7 +54,6 @@ const { data, pending, error, refresh } = await useAsyncData(
 
     return await $fetch<{ vendors: VendorRecord[] }>('/api/admin/vendors', {
       method: 'GET',
-      headers: auth.authHeaders(),
       query:
         statusFilter.value === 'all'
           ? undefined
@@ -62,7 +61,6 @@ const { data, pending, error, refresh } = await useAsyncData(
     })
   },
   {
-    server: false,
     watch: [statusFilter],
     default: () => ({ vendors: [] as VendorRecord[] })
   }
@@ -77,13 +75,11 @@ const { data: approvedVendorData, pending: approvedVendorsPending }
       return await $fetch<{ approvedVendors: ApprovedVendorRecord[] }>(
         '/api/admin/approved-vendors',
         {
-          method: 'GET',
-          headers: auth.authHeaders()
+          method: 'GET'
         }
       )
     },
     {
-      server: false,
       default: () => ({ approvedVendors: [] as ApprovedVendorRecord[] })
     }
   )

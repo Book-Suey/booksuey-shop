@@ -66,8 +66,7 @@ export function useAdminAuth() {
       admin.value = response.admin
       adminProfileCookie.value = response.admin
       return true
-    }
-    catch {
+    } catch {
       clearSession()
       return false
     }

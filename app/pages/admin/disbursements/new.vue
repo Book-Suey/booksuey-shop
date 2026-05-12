@@ -69,13 +69,11 @@ const { data, pending, error, refresh } = await useAsyncData(
     return await $fetch<PayoutRequestDetailsResponse>(
       `/api/admin/payout-requests/${payoutRequestId.value}`,
       {
-        method: 'GET',
-        headers: auth.authHeaders()
+        method: 'GET'
       }
     )
   },
   {
-    server: false,
     immediate: false,
     default: () => null
   }

@@ -127,13 +127,11 @@ const { data, pending, error, refresh } = await useAsyncData(
       '/api/admin/payout-failures',
       {
         method: 'GET',
-        headers: auth.authHeaders(),
         query
       }
     )
   },
   {
-    server: false,
     watch: [
       () => filters.vendorId,
       () => filters.dateFrom,

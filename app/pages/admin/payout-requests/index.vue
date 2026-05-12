@@ -113,13 +113,11 @@ const { data, pending, error, refresh } = await useAsyncData(
       '/api/admin/payout-requests',
       {
         method: 'GET',
-        headers: auth.authHeaders(),
         query
       }
     )
   },
   {
-    server: false,
     watch: [() => filters.status, () => filters.dateFrom, () => filters.dateTo],
     default: () => ({ payoutRequests: [] as AdminPayoutRequest[] })
   }

@@ -78,13 +78,11 @@ const { data, pending, error, refresh } = await useAsyncData(
     return await $fetch<ApprovedVendorDetailResponse>(
       `/api/admin/approved-vendors/${approvedVendorId.value}`,
       {
-        method: 'GET',
-        headers: auth.authHeaders()
+        method: 'GET'
       }
     )
   },
   {
-    server: false,
     watch: [approvedVendorId],
     default: () => ({
       approvedVendor: {

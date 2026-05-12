@@ -14,9 +14,24 @@ const props = defineProps<{
 }>();
 
 const slots = useSlots();
+const route = useRoute();
 const sorting = ref<Array<{ id: string; desc: boolean }>>([]);
 
-const sortableColumnKeys = computed(() => new Set(props.sortableColumns || []));
+const sortableColumnKeys = computed(() => {
+  if (props.sortableColumns) {
+    return new Set(props.sortableColumns);
+  }
+
+  if (!route.path.startsWith("/admin")) {
+    return new Set<string>();
+  }
+
+  return new Set(
+    props.columns
+      .filter((column) => column.key !== "actions")
+      .map((column) => column.key),
+  );
+});
 
 const tableColumns = computed(() =>
   props.columns.map((column) => ({
@@ -98,10 +113,10 @@ function getSortIcon(columnKey: string): string {
     :style="{ '--table-column-count': String(props.columns.length) }"
   >
     <UTable
+      v-model:sorting="sorting"
       class="table-shell__desktop"
       :data="props.rows"
       :columns="tableColumns"
-      v-model:sorting="sorting"
       :get-row-id="props.rowKey"
       :expanded-options="{ getRowCanExpand }"
       sticky="header"

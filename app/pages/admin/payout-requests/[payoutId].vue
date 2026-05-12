@@ -105,12 +105,10 @@ const { data, pending, error, refresh } = await useAsyncData(
       disbursement: Disbursement | null
       ledgerEntries: LedgerEntry[]
     }>(`/api/admin/payout-requests/${route.params.payoutId as string}`, {
-      method: 'GET',
-      headers: auth.authHeaders()
+      method: 'GET'
     })
   },
   {
-    server: false,
     default: () => ({
       payoutRequest: {
         payoutRequestId: '',

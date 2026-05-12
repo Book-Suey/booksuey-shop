@@ -64,18 +64,14 @@ const editForm = reactive({
 const { data, pending, error, refresh } = await useAsyncData(
   'admin-approved-vendors-list',
   async () => {
-    await auth.ensureInitialized()
-
     return await $fetch<{ approvedVendors: ApprovedVendorRecord[] }>(
       '/api/admin/approved-vendors',
       {
-        method: 'GET',
-        headers: auth.authHeaders()
+        method: 'GET'
       }
     )
   },
   {
-    server: false,
     default: () => ({ approvedVendors: [] as ApprovedVendorRecord[] })
   }
 )

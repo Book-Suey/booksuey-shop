@@ -39,13 +39,11 @@ const { data, pending, error, refresh } = await useAsyncData(
     return await $fetch<{ nonVendorSources: NonVendorSourceRecord[] }>(
       '/api/admin/non-vendor-sources',
       {
-        method: 'GET',
-        headers: auth.authHeaders()
+        method: 'GET'
       }
     )
   },
   {
-    server: false,
     default: () => ({ nonVendorSources: [] as NonVendorSourceRecord[] })
   }
 )

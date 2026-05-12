@@ -132,13 +132,11 @@ const { data, pending, error, refresh } = await useAsyncData(
       '/api/admin/imports',
       {
         method: 'GET',
-        headers: auth.authHeaders(),
         query
       }
     )
   },
   {
-    server: false,
     watch: [
       () => filters.status,
       () => filters.sourcePeriod,

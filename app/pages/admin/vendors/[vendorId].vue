@@ -112,12 +112,10 @@ const { data, pending, error, refresh } = await useAsyncData(
       ledgerEntries: VendorLedgerEntry[]
       payoutRequests: VendorPayoutRequest[]
     }>(`/api/admin/vendors/${vendorId.value}/overview`, {
-      method: 'GET',
-      headers: auth.authHeaders()
+      method: 'GET'
     })
   },
   {
-    server: false,
     watch: [vendorId],
     default: () => ({
       vendor: {

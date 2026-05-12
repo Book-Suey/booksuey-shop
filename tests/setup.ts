@@ -8,5 +8,9 @@ process.env.BCRYPT_COST_FACTOR = '12'
 process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/test'
 
 beforeAll(() => {
+  ;(globalThis as { getCookie?: () => undefined }).getCookie = () => undefined
+  ;(globalThis as { setCookie?: () => void }).setCookie = () => {}
+  ;(globalThis as { deleteCookie?: () => void }).deleteCookie = () => {}
+
   // Setup runs before tests
 })

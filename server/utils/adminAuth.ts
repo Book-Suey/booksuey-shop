@@ -15,8 +15,7 @@ export async function requireAdmin(event: H3Event): Promise<AdminIdentity> {
   let token: string | undefined
   if (cookieToken) {
     token = cookieToken
-  }
-  else if (authHeader?.startsWith('Bearer ')) {
+  } else if (authHeader?.startsWith('Bearer ')) {
     token = authHeader.substring(7)
   }
 

@@ -112,12 +112,10 @@ const { data, pending, error, refresh } = await useAsyncData(
 
     return await $fetch<{ auditEvents: AuditEventRecord[] }>('/api/admin/audit', {
       method: 'GET',
-      headers: auth.authHeaders(),
       query
     })
   },
   {
-    server: false,
     watch: [
       () => filters.action,
       () => filters.entityType,

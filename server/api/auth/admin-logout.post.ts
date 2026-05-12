@@ -22,8 +22,7 @@ export default defineEventHandler(async (event) => {
         entityId: payload.adminId,
         createdAt: new Date()
       })
-    }
-    catch {
+    } catch {
       // Token already expired or invalid — still clear the cookie.
     }
   }
