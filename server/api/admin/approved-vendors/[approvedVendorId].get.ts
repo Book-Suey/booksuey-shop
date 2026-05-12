@@ -2,6 +2,7 @@ import Decimal from 'decimal.js'
 import { connectToDatabase } from '../../../config/database'
 import { ApprovedVendor } from '../../../models/ApprovedVendor'
 import { SaleRecord } from '../../../models/SaleRecord'
+import { SalesImportBatch } from '../../../models/SalesImportBatch'
 import { Vendor } from '../../../models/Vendor'
 import { recomputeBalanceSnapshot } from '../../../utils/balance'
 import { requireAdmin } from '../../../utils/adminAuth'
@@ -65,6 +66,19 @@ export default defineEventHandler(async (event) => {
     ? await recomputeBalanceSnapshot(linkedVendor.vendorId, linkedVendor.approvedVendorId || undefined)
     : null
 
+  // Get batch details for each sale
+  const batchIds = [...new Set(sales.map((s: { sourceBatchId: string }) => s.sourceBatchId))]
+  const batches = await SalesImportBatch.find({
+    batchId: { $in: batchIds }
+  }).select('batchId sourcePeriod').lean()
+
+  const batchMap = new Map(
+    batches.map((b: { batchId: string, sourcePeriod: string }) => [
+      b.batchId,
+      b.sourcePeriod
+    ])
+  )
+
   return {
     approvedVendor,
     linkedVendor: linkedVendor
@@ -100,7 +114,7 @@ export default defineEventHandler(async (event) => {
       title: sale.title,
       grossAmount: sale.grossAmount.toString(),
       commissionAmount: sale.commissionAmount.toString(),
-      sourceBatchId: sale.sourceBatchId,
+      period: batchMap.get(sale.sourceBatchId) || sale.sourceBatchId,
       saleOrderId: sale.saleOrderId,
       currency: sale.currency
     })),

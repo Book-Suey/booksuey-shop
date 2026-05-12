@@ -12,6 +12,18 @@ interface ImportResponse {
     rejected: number
     duplicates: number
   }
+  duplicateDetails: Array<{
+    rowNumber: number
+    source: string
+    saleOrderId: string
+    title: string
+    quantity: number
+    extended: string
+    soldAt: string
+    duplicateKind: 'within-upload' | 'existing-sale'
+    matchedRowNumber?: number
+    existingBatchId?: string
+  }>
   errors: Array<{
     code: string
     rowNumber: number
@@ -34,6 +46,44 @@ const form = reactive({
 
 function toBatchDetailPath(batchId: string): string {
   return `/admin/imports/${encodeURIComponent(batchId)}`
+}
+
+function formatDate(value: string): string {
+  const parsed = new Date(value)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
+}
+
+function duplicateReasonLabel(
+  detail: ImportResponse['duplicateDetails'][number]
+): string {
+  return detail.duplicateKind === 'within-upload'
+    ? 'Repeated in upload'
+    : 'Matches imported sale'
+}
+
+function duplicateReasonCopy(
+  detail: ImportResponse['duplicateDetails'][number]
+): string {
+  if (detail.duplicateKind === 'within-upload') {
+    return detail.matchedRowNumber
+      ? `This row matches row ${detail.matchedRowNumber} in the same upload.`
+      : 'This row repeats another row in the same upload.'
+  }
+
+  return detail.existingBatchId
+    ? `This row matches a sale that was already imported in batch ${detail.existingBatchId}.`
+    : 'This row matches a sale that was already imported.'
 }
 
 function updateFileSelection(event: Event): void {
@@ -216,6 +266,7 @@ async function submitImport(): Promise<void> {
         v-if="
           uploadedBatch.errors.length === 0
             && uploadedBatch.unmappedSources.length === 0
+            && uploadedBatch.duplicateDetails.length === 0
         "
         title="Batch imported cleanly"
         description="No row-level validation problems or unmapped sources were detected."
@@ -273,6 +324,57 @@ async function submitImport(): Promise<void> {
               {{ source }}
             </li>
           </ul>
+        </div>
+
+        <div>
+          <h2>Duplicate rows</h2>
+
+          <p class="panel-copy">
+            Open the batch detail page to flag any false positives for manual
+            import review.
+          </p>
+
+          <AppEmptyState
+            v-if="uploadedBatch.duplicateDetails.length === 0"
+            title="No duplicate rows"
+            description="This upload did not skip any rows as duplicates."
+          />
+
+          <div
+            v-else
+            class="detail-list"
+          >
+            <article
+              v-for="duplicateDetail in uploadedBatch.duplicateDetails"
+              :key="`${duplicateDetail.rowNumber}-${duplicateDetail.saleOrderId}`"
+              class="detail-list__row"
+            >
+              <span class="detail-list__eyebrow">
+                Row {{ duplicateDetail.rowNumber }} •
+                {{ duplicateReasonLabel(duplicateDetail) }}
+              </span>
+              <p class="detail-list__title">
+                {{ duplicateDetail.source }} • {{ duplicateDetail.title }}
+              </p>
+              <p class="detail-list__copy">
+                Sale/Order ID {{ duplicateDetail.saleOrderId }} • Sold
+                {{ formatDate(duplicateDetail.soldAt) }} • Qty
+                {{ duplicateDetail.quantity }} • Extended ${{
+                  duplicateDetail.extended
+                }}
+              </p>
+              <p class="detail-list__copy">
+                {{ duplicateReasonCopy(duplicateDetail) }}
+              </p>
+              <a
+                v-if="duplicateDetail.existingBatchId"
+                :href="toBatchDetailPath(duplicateDetail.existingBatchId)"
+                class="detail-list__link"
+              >
+                Open original batch
+              </a>
+            </article>
+          </div>
         </div>
       </template>
     </article>

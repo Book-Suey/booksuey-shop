@@ -29,7 +29,6 @@ definePageMeta({
           <li><a href="#failures">Payout Failures</a></li>
           <li><a href="#audit">Audit Trail</a></li>
           <li><a href="#status">Status Reference</a></li>
-          <li><a href="#troubleshooting">Troubleshooting</a></li>
         </ul>
       </aside>
 
@@ -76,9 +75,10 @@ definePageMeta({
               This is where any accounts that are either publisher accounts,
               member-owner accounts, or customers with actual customer credit
               are added so that they can be properly rejected for import without
-              being flagged as errors. After each import you can identify these
-              from the unmapped sources errors. The name is simply the First
-              Name Last Name as they exist in Basil.
+              being flagged as errors. After each import you can identify any
+              sources that need to be added by reviewing the unmapped sources
+              errors after import. The name is simply the First Name Last Name
+              as they exist in Basil.
             </li>
           </ul>
         </article>
@@ -94,8 +94,20 @@ definePageMeta({
           </p>
           <ul>
             <li>Create and maintain vendor accounts.</li>
-            <li>Set active or inactive status.</li>
+            <li>Set active or inactive status (pending).</li>
             <li>Invite from approved vendor records when unlinked.</li>
+            <li>
+              This is where you can see all of the vendor accounts that have
+              been created either through invitation or self sign up. You can
+              also create accounts directly here if needed, but generally it's
+              best to create an approved vendor record first and then invite
+              them so that you can be sure the Basil ID and email are correct
+              and linked.
+            </li>
+            <li>
+              Click on View Details to see the full overview of the vendor
+              account, including account info, sales, and ledger entries.
+            </li>
           </ul>
         </article>
 
@@ -113,6 +125,34 @@ definePageMeta({
             <li>Upload CSV and set source period.</li>
             <li>Review accepted/rejected counts and warnings.</li>
             <li>Inspect batch detail for unmapped sources and duplicates.</li>
+            <li>
+              From Basil, you click the "Reports" menu then "Reports List" (I
+              think), then in the dropdown, find "Sales Details", click "Change
+              Report Settings" or whatever it is called and modify the to/from
+              dates to the past month (or whatever period you are importing).
+              Click "Load Report" then once it is loaded, click "Export" to save
+              the csv file. Then from this page, upload that csv file without
+              opening it in Excel first to avoid formatting issues.
+            </li>
+            <li>
+              After you upload, you will see a summary of the import with counts
+              of accepted and rejected rows. If there are any errors with the
+              file formatting or missing required fields, the import will fail
+              and you can review the error message to fix the file and try
+              again.
+            </li>
+            <li>
+              Pay special attention to the unmapped sources and duplicates. The
+              unmapped sources will either need to be added as approved vendor
+              records or verified non-vendor source before they can be properly
+              imported without raising errors. This should surface any vendors
+              that are missing from the appoved vendors list. I would confirm
+              that they are indeed consignment vendors before adding them to the
+              approved vendors list, however, as there are some customers that
+              we have "bought" used books from in exchange for store credit.
+              Those customers should be added to the verified non-vendors
+              sources.
+            </li>
           </ol>
           <p class="panel-copy">
             Statuses: completed, failed, flagged (rejected rows).
@@ -132,16 +172,16 @@ definePageMeta({
             <li>Review queue metrics and open request details.</li>
             <li>Approve/reject with review note or rejection reason.</li>
             <li>Disburse only after request status is approved.</li>
+            <li>
+              This is where you can see any requests to be paid. Each one will
+              need to be handled individually. It is a multi step process in
+              order to keep database items safe a consistent while providing
+              some guardrails for payment duplication or accidental errors.
+              Generally speaking you should move from approval straight to
+              disbursement. Potential statuses: requested, approved, disbursing,
+              paid, failed, rejected.
+            </li>
           </ol>
-          <p class="panel-copy">
-            This is where you can see any requests to be paid. Each one will
-            need to be handled individually. It is a multi step process in order
-            to keep database items safe a consistent while providing some
-            guardrails for payment duplication or accidental errors. Generally
-            speaking you should move from approval straight to disbursement.
-            Potential statuses: requested, approved, disbursing, paid, failed,
-            rejected.
-          </p>
         </article>
 
         <article
@@ -170,6 +210,11 @@ definePageMeta({
               You can monitor the status with the link to check on the status
               until completion if you need to wait for final confirmation.
             </li>
+            <li>
+              If a request seems to be stuck in "disbursing" status, you can let
+              Eric know and he will investigate and remove it from the database
+              if necessary.
+            </li>
           </ul>
         </article>
 
@@ -184,7 +229,27 @@ definePageMeta({
           </p>
           <ul>
             <li>Review failed disbursements and provider messages.</li>
-            <li>Re-check provider status and export CSV for escalation.</li>
+            <li>
+              The failure messages are what gets returned from the PayPal API
+              and will help Eric investigate the issue. Some of the messages are
+              obvious enough that you may be able to resolve the issue without
+              any support. For example, if the message indicates that there
+              isn't an assiciated PayPal account, you can check with the Vendor
+              to make sure they have the correct PayPal email or Venmo tag saved
+              on their account profile.
+            </li>
+            <li>
+              The reconciliation process is basically to just revert the failed
+              disbursement amount to the vendor's account balance in a way that
+              is traceable.
+            </li>
+            <li>
+              Re-check provider status and export CSV for escalation. This will
+              rarely, if ever, be necessary. But could be useful if something
+              seems to be disbursing for an extended period without completion.
+              It is mostly to help Eric to investigate and resolve any issues on
+              the backend.
+            </li>
           </ul>
         </article>
 
@@ -197,6 +262,11 @@ definePageMeta({
           <ul>
             <li>Filter by action, entity, actor role, and date range.</li>
             <li>Inspect before/after snapshots for investigations.</li>
+            <li>
+              This page is mostly for sanity, transparency, and having an audit
+              trail in case something seems awry. It will most likely only need
+              to be used by Eric for larger scale troubleshooting.
+            </li>
           </ul>
         </article>
 
@@ -213,25 +283,6 @@ definePageMeta({
             </li>
             <li>Failure reconciliation: failed, pending restore, restored</li>
           </ul>
-        </article>
-
-        <article
-          id="troubleshooting"
-          class="vendor-panel"
-        >
-          <h2>Checklist</h2>
-          <ol>
-            <li>
-              Imports failing: inspect batch details and fix mappings first.
-            </li>
-            <li>
-              Payout blocked: verify approved status and payout destination.
-            </li>
-            <li>
-              Persistent failures: use payout failures page and export CSV.
-            </li>
-            <li>Data mismatch: confirm event sequence in audit logs.</li>
-          </ol>
         </article>
       </div>
     </div>

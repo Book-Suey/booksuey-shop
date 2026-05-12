@@ -252,6 +252,12 @@ async function submitSalesDetailUpload(): Promise<void> {
         >
           View import audit trail
         </NuxtLink>
+        <NuxtLink
+          to="/admin/imports/manual-review"
+          class="portal-button portal-button--secondary"
+        >
+          Manual import review queue
+        </NuxtLink>
         <button
           type="button"
           class="portal-button portal-button--primary"

@@ -105,16 +105,22 @@ export default defineEventHandler(async (event) => {
 
   const existingRows = await SaleRecord.find(
     { sourceRowKey: { $in: parsedCsv.rows.map(row => row.sourceRowKey) } },
-    { sourceRowKey: 1 }
+    { sourceRowKey: 1, sourceBatchId: 1 }
   )
-  const existingRowKeys = new Set(existingRows.map((row: { sourceRowKey: string }) => row.sourceRowKey))
+  const existingRowsByKey = new Map<string, { sourceRowKey: string, sourceBatchId: string }>(
+    existingRows.map((row: { sourceRowKey: string, sourceBatchId: string }) => [row.sourceRowKey, row])
+  )
 
   const batchId = `batch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`
   const rowErrors = [...parsedCsv.rowErrors]
+  const duplicateDetails = parsedCsv.duplicateDetails.map(detail => ({
+    ...detail,
+    manualImportStatus: 'not_requested' as const
+  }))
   const unmappedSources = new Set<string>()
   const nonVendorSources = new Set<string>()
   let nonVendorRejectedRows = 0
-  let duplicateRows = parsedCsv.duplicateRows
+  let duplicateRows = duplicateDetails.length
 
   const acceptedRows = [] as Array<{
     vendorId?: string
@@ -134,8 +140,27 @@ export default defineEventHandler(async (event) => {
   }>
 
   for (const row of parsedCsv.rows) {
-    if (existingRowKeys.has(row.sourceRowKey)) {
+    const existingRow = existingRowsByKey.get(row.sourceRowKey)
+
+    if (existingRow) {
       duplicateRows += 1
+      duplicateDetails.push({
+        rowNumber: row.rowNumber,
+        source: row.source,
+        saleOrderId: row.saleOrderId,
+        title: row.title,
+        quantity: row.quantity,
+        unit: row.unit,
+        discount: row.discount,
+        extended: row.extended,
+        cost: row.cost,
+        credit: row.credit,
+        soldAt: row.soldAt,
+        sourceRowKey: row.sourceRowKey,
+        duplicateKind: 'existing-sale',
+        existingBatchId: existingRow.sourceBatchId,
+        manualImportStatus: 'not_requested'
+      })
       continue
     }
 
@@ -239,6 +264,7 @@ export default defineEventHandler(async (event) => {
     rejectedRows: rowErrors.length + nonVendorRejectedRows,
     nonVendorRejectedRows,
     duplicateRows,
+    duplicateDetails,
     errors: rowErrors,
     unmappedSources: Array.from(unmappedSources),
     nonVendorSources: Array.from(nonVendorSources)
@@ -270,6 +296,7 @@ export default defineEventHandler(async (event) => {
       nonVendorRejected: nonVendorRejectedRows,
       duplicates: duplicateRows
     },
+    duplicateDetails,
     errors: rowErrors,
     unmappedSources: Array.from(unmappedSources),
     nonVendorSources: Array.from(nonVendorSources)

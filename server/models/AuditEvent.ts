@@ -22,6 +22,8 @@ export type AuditAction
     | 'disbursement_completed'
     | 'disbursement_failed'
     | 'sales_imported'
+    | 'sales_duplicate_manual_import_requested'
+    | 'sales_duplicate_imported'
 
 export interface IAuditEvent {
   auditEventId: string

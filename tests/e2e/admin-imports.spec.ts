@@ -114,3 +114,18 @@ test('batch detail page has back navigation', async ({ page }) => {
     }
   }
 })
+
+test('manual import review queue page is reachable', async ({ page }) => {
+  await page.goto('/admin/imports/manual-review')
+
+  const url = page.url()
+  const isOnQueuePage = url.includes('/admin/imports/manual-review')
+  const isOnLogin = url.includes('/login')
+
+  if (isOnQueuePage) {
+    await expect(page.getByRole('heading', { name: 'Manual import review queue' })).toBeVisible()
+    await expect(page.getByLabel('Duplicate reason')).toBeVisible()
+  } else if (isOnLogin) {
+    await expect(page.getByRole('heading', { name: 'Sign in to Book Suey' })).toBeVisible()
+  }
+})

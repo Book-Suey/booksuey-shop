@@ -25,6 +25,7 @@ interface VendorSale {
   saleRecordId: string
   soldAt: string
   title: string
+  batch: string
   grossAmount: string
   commissionAmount: string
   currency: string
@@ -142,6 +143,7 @@ const { data, pending, error, refresh } = await useAsyncData(
 )
 
 const salesColumns = [
+  { key: 'batch', label: 'Period' },
   { key: 'soldAt', label: 'Sold At' },
   { key: 'title', label: 'Title' },
   { key: 'grossAmount', label: 'Gross' },
@@ -287,6 +289,7 @@ const payoutColumns = [
           :rows="data.sales"
           :row-key="(row) => row.saleRecordId"
           :mobile-columns="[
+            'batch',
             'title',
             'soldAt',
             'grossAmount',

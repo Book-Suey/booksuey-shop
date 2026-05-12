@@ -1,6 +1,7 @@
 import { connectToDatabase } from '../../../../config/database'
 import { Vendor } from '../../../../models/Vendor'
 import { SaleRecord } from '../../../../models/SaleRecord'
+import { SalesImportBatch } from '../../../../models/SalesImportBatch'
 import { LedgerEntry } from '../../../../models/LedgerEntry'
 import { PayoutRequest } from '../../../../models/PayoutRequest'
 import { requireAdmin } from '../../../../utils/adminAuth'
@@ -58,6 +59,19 @@ export default defineEventHandler(async (event) => {
       .limit(8)
   ])
 
+  // Get batch details for each sale
+  const batchIds = [...new Set(sales.map((s: { sourceBatchId: string }) => s.sourceBatchId))]
+  const batches = await SalesImportBatch.find({
+    batchId: { $in: batchIds }
+  }).select('batchId sourcePeriod').lean()
+
+  const batchMap = new Map(
+    batches.map((b: { batchId: string, sourcePeriod: string }) => [
+      b.batchId,
+      b.sourcePeriod
+    ])
+  )
+
   return {
     vendor: {
       vendorId: vendor.vendorId,
@@ -78,6 +92,7 @@ export default defineEventHandler(async (event) => {
       _id: unknown
       soldAt: Date
       title: string
+      sourceBatchId: string
       grossAmount: { toString: () => string }
       commissionAmount: { toString: () => string }
       currency: string
@@ -85,6 +100,7 @@ export default defineEventHandler(async (event) => {
       saleRecordId: String(sale._id),
       soldAt: sale.soldAt,
       title: sale.title,
+      batch: batchMap.get(sale.sourceBatchId) || sale.sourceBatchId,
       grossAmount: sale.grossAmount.toString(),
       commissionAmount: sale.commissionAmount.toString(),
       currency: sale.currency

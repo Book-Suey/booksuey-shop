@@ -7,15 +7,25 @@ type AdminIdentity = {
 }
 
 export async function requireAdmin(event: H3Event): Promise<AdminIdentity> {
+  // Accept the httpOnly cookie (set on login, forwarded automatically in SSR fetches)
+  // or an Authorization header (sent by client-side mutations for backward compatibility).
+  const cookieToken = getCookie(event, 'booksuey-admin-token')
   const authHeader = getHeader(event, 'authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
+
+  let token: string | undefined
+  if (cookieToken) {
+    token = cookieToken
+  }
+  else if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.substring(7)
+  }
+
+  if (!token) {
     throw createError({
       statusCode: 401,
       statusMessage: 'Unauthorized - No token provided'
     })
   }
-
-  const token = authHeader.substring(7)
   const payload = await verifyToken(token)
 
   if (payload.role !== 'admin') {

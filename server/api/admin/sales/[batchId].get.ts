@@ -23,7 +23,15 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const uploadedByMap = await getAdminDisplayNameMap([batch.uploadedBy])
+  const adminIds = [batch.uploadedBy]
+
+  for (const duplicateDetail of batch.duplicateDetails || []) {
+    if (duplicateDetail.manualImportRequestedBy) {
+      adminIds.push(duplicateDetail.manualImportRequestedBy)
+    }
+  }
+
+  const uploadedByMap = await getAdminDisplayNameMap(adminIds)
 
   return {
     batch: {
@@ -40,6 +48,59 @@ export default defineEventHandler(async (event) => {
         nonVendorRejected: batch.nonVendorRejectedRows,
         duplicates: batch.duplicateRows
       },
+      duplicateDetails: (batch.duplicateDetails || []).map((duplicateDetail: {
+        rowNumber: number
+        source: string
+        saleOrderId: string
+        title: string
+        quantity: number
+        unit: string
+        discount: string
+        extended: string
+        cost: string
+        credit: string
+        soldAt: Date
+        sourceRowKey: string
+        duplicateKind: 'within-upload' | 'existing-sale'
+        matchedRowNumber?: number
+        existingBatchId?: string
+        manualImportStatus: 'not_requested' | 'requested' | 'imported'
+        manualImportRequestedAt?: Date
+        manualImportRequestedBy?: string
+        manualImportImportedAt?: Date
+        manualImportImportedBy?: string
+        manualImportSaleRecordId?: string
+      }) => ({
+        rowNumber: duplicateDetail.rowNumber,
+        source: duplicateDetail.source,
+        saleOrderId: duplicateDetail.saleOrderId,
+        title: duplicateDetail.title,
+        quantity: duplicateDetail.quantity,
+        unit: duplicateDetail.unit,
+        discount: duplicateDetail.discount,
+        extended: duplicateDetail.extended,
+        cost: duplicateDetail.cost,
+        credit: duplicateDetail.credit,
+        soldAt: duplicateDetail.soldAt,
+        sourceRowKey: duplicateDetail.sourceRowKey,
+        duplicateKind: duplicateDetail.duplicateKind,
+        matchedRowNumber: duplicateDetail.matchedRowNumber,
+        existingBatchId: duplicateDetail.existingBatchId,
+        manualImportStatus: duplicateDetail.manualImportStatus,
+        manualImportRequestedAt: duplicateDetail.manualImportRequestedAt,
+        manualImportRequestedBy:
+          duplicateDetail.manualImportRequestedBy
+            ? uploadedByMap.get(duplicateDetail.manualImportRequestedBy)
+            || duplicateDetail.manualImportRequestedBy
+            : undefined,
+        manualImportImportedAt: duplicateDetail.manualImportImportedAt,
+        manualImportImportedBy:
+          duplicateDetail.manualImportImportedBy
+            ? uploadedByMap.get(duplicateDetail.manualImportImportedBy)
+            || duplicateDetail.manualImportImportedBy
+            : undefined,
+        manualImportSaleRecordId: duplicateDetail.manualImportSaleRecordId
+      })),
       errors: batch.errors,
       unmappedSources: batch.unmappedSources,
       nonVendorSources: batch.nonVendorSources

@@ -1,11 +1,16 @@
 export default defineNuxtRouteMiddleware(async () => {
-  // Admin session is stored in localStorage, which is unavailable during SSR.
-  // Defer guard enforcement to the client where session hydration can occur.
+  const adminAuth = useAdminAuth()
+
   if (import.meta.server) {
+    // The httpOnly token cookie is readable on the server via useCookie.
+    // Check its presence here; the API endpoints perform full JWT validation.
+    const tokenCookie = useCookie('booksuey-admin-token')
+    if (!tokenCookie.value) {
+      return navigateTo('/login')
+    }
+
     return
   }
-
-  const adminAuth = useAdminAuth()
 
   await adminAuth.ensureInitialized()
 

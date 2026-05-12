@@ -56,6 +56,26 @@ export type ImportRowError = {
   hint: string
 }
 
+export type ImportDuplicateKind = 'within-upload' | 'existing-sale'
+
+export type ImportDuplicateDetail = {
+  rowNumber: number
+  source: string
+  saleOrderId: string
+  title: string
+  quantity: number
+  unit: string
+  discount: string
+  extended: string
+  cost: string
+  credit: string
+  soldAt: Date
+  sourceRowKey: string
+  duplicateKind: ImportDuplicateKind
+  matchedRowNumber?: number
+  existingBatchId?: string
+}
+
 export type ParsedSalesRow = {
   rowNumber: number
   soldAt: Date
@@ -228,6 +248,7 @@ export function parseAndValidateSalesCsv(csvContent: string): {
   rows: ParsedSalesRow[]
   rowErrors: ImportRowError[]
   duplicateRows: number
+  duplicateDetails: ImportDuplicateDetail[]
   totalRows: number
 } {
   const bytes = Buffer.byteLength(csvContent, 'utf8')
@@ -259,7 +280,8 @@ export function parseAndValidateSalesCsv(csvContent: string): {
 
   const rows: ParsedSalesRow[] = []
   const rowErrors: ImportRowError[] = []
-  const seenRowKeys = new Set<string>()
+  const duplicateDetails: ImportDuplicateDetail[] = []
+  const seenRowsByKey = new Map<string, ParsedSalesRow>()
   let duplicateRows = 0
 
   records.forEach((record, index) => {
@@ -334,13 +356,7 @@ export function parseAndValidateSalesCsv(csvContent: string): {
       cost: normalizedCost,
       credit: normalizedCredit
     })
-    if (seenRowKeys.has(sourceRowKey)) {
-      duplicateRows += 1
-      return
-    }
-    seenRowKeys.add(sourceRowKey)
-
-    rows.push({
+    const parsedRow: ParsedSalesRow = {
       rowNumber,
       soldAt,
       date,
@@ -356,13 +372,39 @@ export function parseAndValidateSalesCsv(csvContent: string): {
       unit: new Decimal(normalizedUnit).toFixed(2),
       discount: new Decimal(normalizedDiscount).toFixed(2),
       extended: new Decimal(normalizedExtended).toFixed(2)
-    })
+    }
+
+    const firstSeenRow = seenRowsByKey.get(sourceRowKey)
+    if (firstSeenRow) {
+      duplicateRows += 1
+      duplicateDetails.push({
+        rowNumber: parsedRow.rowNumber,
+        source: parsedRow.source,
+        saleOrderId: parsedRow.saleOrderId,
+        title: parsedRow.title,
+        quantity: parsedRow.quantity,
+        unit: parsedRow.unit,
+        discount: parsedRow.discount,
+        extended: parsedRow.extended,
+        cost: parsedRow.cost,
+        credit: parsedRow.credit,
+        soldAt: parsedRow.soldAt,
+        sourceRowKey: parsedRow.sourceRowKey,
+        duplicateKind: 'within-upload',
+        matchedRowNumber: firstSeenRow.rowNumber
+      })
+      return
+    }
+
+    seenRowsByKey.set(sourceRowKey, parsedRow)
+    rows.push(parsedRow)
   })
 
   return {
     rows,
     rowErrors,
     duplicateRows,
+    duplicateDetails,
     totalRows: records.length
   }
 }

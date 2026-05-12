@@ -17,6 +17,7 @@ describe('sales import utilities', () => {
     expect(result.rows).toHaveLength(1)
     expect(result.rowErrors).toHaveLength(0)
     expect(result.duplicateRows).toBe(0)
+    expect(result.duplicateDetails).toHaveLength(0)
     expect(result.rows[0].saleOrderId).toBe('SO-100')
     expect(result.rows[0].grossAmount).toBe('12.50')
     expect(result.rows[0].commissionAmount).toBe('8.00')
@@ -92,6 +93,10 @@ describe('sales import utilities', () => {
     expect(result.totalRows).toBe(2)
     expect(result.rows).toHaveLength(1)
     expect(result.duplicateRows).toBe(1)
+    expect(result.duplicateDetails).toHaveLength(1)
+    expect(result.duplicateDetails[0].duplicateKind).toBe('within-upload')
+    expect(result.duplicateDetails[0].rowNumber).toBe(3)
+    expect(result.duplicateDetails[0].matchedRowNumber).toBe(2)
   })
 
   it('does not dedupe distinct POS line items that share the same sale order id', () => {
@@ -106,6 +111,7 @@ describe('sales import utilities', () => {
     expect(result.totalRows).toBe(2)
     expect(result.rows).toHaveLength(2)
     expect(result.duplicateRows).toBe(0)
+    expect(result.duplicateDetails).toHaveLength(0)
     expect(result.rows[0].sourceRowKey).not.toBe(result.rows[1].sourceRowKey)
   })
 

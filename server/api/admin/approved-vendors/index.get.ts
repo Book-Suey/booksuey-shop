@@ -51,6 +51,9 @@ export default defineEventHandler(async (event) => {
   )
 
   return {
-    approvedVendors: vendorsWithLinkStatus
+    approvedVendors: vendorsWithLinkStatus.map(vendor => ({
+      ...vendor,
+      approvedVendorName: `${vendor.firstName} ${vendor.lastName}`.trim()
+    }))
   }
 })

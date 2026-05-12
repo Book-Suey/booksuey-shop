@@ -28,7 +28,11 @@ beforeAll(async () => {
   vi.stubGlobal('readBody', async (event: { body?: unknown }) => event.body ?? {})
   vi.stubGlobal('readMultipartFormData', async () => multipartParts)
   vi.stubGlobal('getHeader', (event: { headers?: Record<string, string | undefined> }, key: string) => event.headers?.[key])
+  vi.stubGlobal('getCookie', (event: { headers?: Record<string, string | undefined> }, _name: string) => undefined)
+  vi.stubGlobal('setCookie', () => {})
+  vi.stubGlobal('deleteCookie', () => {})
   vi.stubGlobal('getRouterParam', (event: { params?: Record<string, string> }, key: string) => event.params?.[key])
+  vi.stubGlobal('getQuery', (event: { query?: Record<string, unknown> }) => event.query ?? {})
   vi.stubGlobal('createError', (input: { statusCode: number, statusMessage: string }) => {
     const error = new Error(input.statusMessage) as Error & { statusCode: number, statusMessage: string }
     error.statusCode = input.statusCode
@@ -336,5 +340,261 @@ describe('Admin Sales Import Endpoint', () => {
     expect(batchDetail.batch.summary.nonVendorRejected).toBe(1)
     expect(batchDetail.batch.errors).toHaveLength(0)
     expect(batchDetail.batch.nonVendorSources).toContain('Customer Credit')
+  })
+
+  it('persists duplicate row details and allows admins to flag them for manual import review', async () => {
+    await ApprovedVendor.create({
+      basilId: 'BASIL-5',
+      firstName: 'Duplicate',
+      lastName: 'Review',
+      email: 'duplicate-review@example.com'
+    })
+
+    await Vendor.create({
+      vendorId: 'vendor_5',
+      legalName: 'Duplicate Review LLC',
+      displayName: 'Duplicate Review',
+      email: 'vendor-duplicate-review@example.com',
+      passwordHash: 'hashed-password',
+      status: 'active',
+      approvedVendorId: 'BASIL-5'
+    })
+
+    const csvContent = `${csvHeader}2026-05-01,10:15 AM,Duplicate Review,$12.50,$2.50,$8.00,$7.00,Book A,1,$12.50,SO-808\n`
+
+    const { default: importSales } = await import('../../server/api/admin/sales/imports.post')
+    const { default: getBatch } = await import('../../server/api/admin/sales/[batchId].get')
+    const { default: getBatchSummary } = await import('../../server/api/admin/imports/[batchId]/summary.get')
+    const { default: requestManualImport } = await import('../../server/api/admin/sales/[batchId]/duplicates/[rowNumber]/manual-import.post')
+    const { default: getManualReviewQueue } = await import('../../server/api/admin/sales/duplicates/manual-review.get')
+    const { default: importReviewedDuplicate } = await import('../../server/api/admin/sales/[batchId]/duplicates/[rowNumber]/import.post')
+
+    const initialImport = await importSales({
+      headers: adminHeaders(),
+      body: {
+        sourcePeriod: '2026-Q2',
+        csvContent
+      }
+    }) as { batchId: string }
+
+    const duplicateImport = await importSales({
+      headers: adminHeaders(),
+      body: {
+        sourcePeriod: '2026-Q3',
+        csvContent
+      }
+    }) as {
+      batchId: string
+      summary: { accepted: number, duplicates: number }
+      duplicateDetails: Array<{
+        rowNumber: number
+        duplicateKind: 'within-upload' | 'existing-sale'
+        existingBatchId?: string
+        manualImportStatus: 'not_requested' | 'requested'
+      }>
+    }
+
+    expect(duplicateImport.summary.accepted).toBe(0)
+    expect(duplicateImport.summary.duplicates).toBe(1)
+    expect(duplicateImport.duplicateDetails).toHaveLength(1)
+    expect(duplicateImport.duplicateDetails[0].rowNumber).toBe(2)
+    expect(duplicateImport.duplicateDetails[0].duplicateKind).toBe('existing-sale')
+    expect(duplicateImport.duplicateDetails[0].existingBatchId).toBe(initialImport.batchId)
+    expect(duplicateImport.duplicateDetails[0].manualImportStatus).toBe('not_requested')
+
+    const manualImportResult = await requestManualImport({
+      headers: adminHeaders(),
+      params: {
+        batchId: duplicateImport.batchId,
+        rowNumber: '2'
+      }
+    }) as {
+      duplicateDetail: {
+        rowNumber: number
+        manualImportStatus: 'not_requested' | 'requested'
+      }
+    }
+
+    expect(manualImportResult.duplicateDetail.rowNumber).toBe(2)
+    expect(manualImportResult.duplicateDetail.manualImportStatus).toBe('requested')
+
+    const batchDetail = await getBatch({
+      headers: adminHeaders(),
+      params: { batchId: duplicateImport.batchId }
+    }) as {
+      batch: {
+        duplicateDetails: Array<{
+          rowNumber: number
+          existingBatchId?: string
+          manualImportStatus: 'not_requested' | 'requested'
+          manualImportRequestedBy?: string
+        }>
+      }
+    }
+
+    expect(batchDetail.batch.duplicateDetails).toHaveLength(1)
+    expect(batchDetail.batch.duplicateDetails[0].rowNumber).toBe(2)
+    expect(batchDetail.batch.duplicateDetails[0].existingBatchId).toBe(initialImport.batchId)
+    expect(batchDetail.batch.duplicateDetails[0].manualImportStatus).toBe('requested')
+    expect(batchDetail.batch.duplicateDetails[0].manualImportRequestedBy).toBe('admin_sales_import')
+
+    const manualReviewQueue = await getManualReviewQueue({
+      headers: adminHeaders(),
+      query: {}
+    }) as {
+      rows: Array<{
+        batchId: string
+        rowNumber: number
+        duplicateKind: 'within-upload' | 'existing-sale'
+        existingBatchId?: string
+        manualImportRequestedBy?: string
+      }>
+    }
+
+    expect(manualReviewQueue.rows).toHaveLength(1)
+    expect(manualReviewQueue.rows[0].batchId).toBe(duplicateImport.batchId)
+    expect(manualReviewQueue.rows[0].rowNumber).toBe(2)
+    expect(manualReviewQueue.rows[0].duplicateKind).toBe('existing-sale')
+    expect(manualReviewQueue.rows[0].existingBatchId).toBe(initialImport.batchId)
+    expect(manualReviewQueue.rows[0].manualImportRequestedBy).toBe('admin_sales_import')
+
+    const importResult = await importReviewedDuplicate({
+      headers: adminHeaders(),
+      params: {
+        batchId: duplicateImport.batchId,
+        rowNumber: '2'
+      }
+    }) as {
+      imported: boolean
+      status: 'imported' | 'already_imported'
+      saleRecordId?: string
+    }
+
+    expect(importResult.imported).toBe(true)
+    expect(importResult.status).toBe('imported')
+    expect(importResult.saleRecordId).toBeDefined()
+
+    const importedSaleRecord = await SaleRecord.findById(importResult.saleRecordId)
+    expect(importedSaleRecord).toBeDefined()
+    expect(importedSaleRecord?.sourceBatchId).toBe(duplicateImport.batchId)
+
+    const importedLedgerEntry = await LedgerEntry.findOne({
+      referenceType: 'SaleRecord',
+      referenceId: importResult.saleRecordId
+    })
+    expect(importedLedgerEntry).toBeDefined()
+    expect(importedLedgerEntry?.entryType).toBe('sale')
+
+    const batchSummary = await getBatchSummary({
+      headers: adminHeaders(),
+      params: { batchId: duplicateImport.batchId }
+    }) as {
+      summary: Array<{
+        approvedVendorId: string
+        approvedVendorName: string
+        isLinked: boolean
+      }>
+    }
+
+    expect(batchSummary.summary).toHaveLength(1)
+    expect(batchSummary.summary[0].approvedVendorId).toBe('BASIL-5')
+    expect(batchSummary.summary[0].approvedVendorName).toBe('Duplicate Review')
+
+    const queueAfterImport = await getManualReviewQueue({
+      headers: adminHeaders(),
+      query: {}
+    }) as {
+      rows: Array<{ batchId: string, rowNumber: number }>
+    }
+
+    expect(queueAfterImport.rows).toHaveLength(0)
+
+    const batchDetailAfterImport = await getBatch({
+      headers: adminHeaders(),
+      params: { batchId: duplicateImport.batchId }
+    }) as {
+      batch: {
+        duplicateDetails: Array<{
+          rowNumber: number
+          manualImportStatus: 'not_requested' | 'requested' | 'imported'
+          manualImportSaleRecordId?: string
+        }>
+      }
+    }
+
+    expect(batchDetailAfterImport.batch.duplicateDetails[0].manualImportStatus).toBe('imported')
+    expect(batchDetailAfterImport.batch.duplicateDetails[0].manualImportSaleRecordId).toBe(importResult.saleRecordId)
+
+    const auditEvent = await AuditEvent.findOne({
+      action: 'sales_duplicate_manual_import_requested',
+      entityId: duplicateImport.batchId
+    })
+
+    expect(auditEvent).toBeDefined()
+
+    const importAuditEvent = await AuditEvent.findOne({
+      action: 'sales_duplicate_imported',
+      entityId: duplicateImport.batchId
+    })
+
+    expect(importAuditEvent).toBeDefined()
+  })
+
+  it('renders approved vendor names in the batch summary even when the sale record points at the linked vendor id', async () => {
+    await ApprovedVendor.create({
+      basilId: 'BASIL-6',
+      firstName: 'Approved',
+      lastName: 'Vendor',
+      email: 'approved-vendor@example.com'
+    })
+
+    await Vendor.create({
+      vendorId: 'vendor_6',
+      legalName: 'Approved Vendor LLC',
+      displayName: 'Linked Display Name',
+      email: 'vendor-approved@example.com',
+      passwordHash: 'hashed-password',
+      status: 'active',
+      approvedVendorId: 'BASIL-6'
+    })
+
+    const saleRecord = await SaleRecord.create({
+      vendorId: 'vendor_6',
+      approvedVendorId: 'vendor_6',
+      sourceBatchId: 'batch_test_summary',
+      sourceRowKey: 'batch_test_summary::row-1',
+      soldAt: new Date('2026-05-01T10:15:00Z'),
+      grossAmount: '12.50',
+      commissionAmount: '8.00',
+      currency: 'USD',
+      title: 'Book A',
+      quantity: 1,
+      unit: '12.50',
+      discount: '2.50',
+      extended: '12.50',
+      cost: '8.00',
+      credit: '7.00',
+      saleOrderId: 'SO-999'
+    })
+
+    const { default: getBatchSummary } = await import('../../server/api/admin/imports/[batchId]/summary.get')
+
+    const batchSummary = await getBatchSummary({
+      headers: adminHeaders(),
+      params: { batchId: 'batch_test_summary' }
+    }) as {
+      summary: Array<{
+        approvedVendorId: string
+        approvedVendorName: string
+        isLinked: boolean
+      }>
+    }
+
+    expect(batchSummary.summary).toHaveLength(1)
+    expect(batchSummary.summary[0].approvedVendorId).toBe('BASIL-6')
+    expect(batchSummary.summary[0].approvedVendorName).toBe('Approved Vendor')
+    expect(batchSummary.summary[0].isLinked).toBe(true)
+
+    await SaleRecord.findByIdAndDelete(saleRecord._id)
   })
 })

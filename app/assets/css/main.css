@@ -903,6 +903,32 @@ body {
   margin-top: 0.35rem;
 }
 
+.detail-list__link {
+  display: inline-flex;
+  margin-top: 0.5rem;
+  color: var(--portal-ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-transform: uppercase;
+}
+
+.detail-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.detail-list__status {
+  color: var(--portal-ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .compact-list {
   display: grid;
   gap: 0.4rem;
