@@ -1,75 +1,82 @@
 <script setup lang="ts">
-const auth = useVendorAuth();
-const isLoggingOut = ref(false);
-const hasHydrated = ref(false);
-const isMobileMenuOpen = ref(false);
+const auth = useVendorAuth()
+const isLoggingOut = ref(false)
+const hasHydrated = ref(false)
+const isMobileMenuOpen = ref(false)
 const vendorDisplayName = computed(() => {
   if (!hasHydrated.value) {
-    return "Account";
+    return 'Account'
   }
 
-  return auth.vendor.value?.displayName || "Account";
-});
+  return auth.vendor.value?.displayName || 'Account'
+})
 
 const headerUi = {
-  container: "app-header__container",
-};
+  container: 'app-header__container'
+}
 
 const vendorNavMenuUi = {
   content:
-    "min-w-56 rounded-none border-2 border-[var(--portal-line)] bg-[var(--portal-paper)] p-1 shadow-none",
-  item: "w-full rounded-none border-2 border-transparent px-[0.85rem] py-[0.6rem] text-left font-mono text-[0.8rem] font-semibold uppercase tracking-[0.1em] !text-[var(--portal-ink-soft)] before:!bg-transparent !transition-none before:!transition-none data-[highlighted]:border-[var(--portal-line)] data-[highlighted]:!bg-[var(--portal-accent-soft)] data-[highlighted]:!text-[var(--portal-ink)] data-[highlighted]:before:!bg-transparent",
-  itemLabel: "truncate",
-};
+    'min-w-56 rounded-none border-2 border-[var(--portal-line)] bg-[var(--portal-paper)] p-1 shadow-none',
+  item: 'w-full rounded-none border-2 border-transparent px-[0.85rem] py-[0.6rem] text-left font-mono text-[0.8rem] font-semibold uppercase tracking-[0.1em] !text-[var(--portal-ink-soft)] before:!bg-transparent !transition-none before:!transition-none data-[highlighted]:border-[var(--portal-line)] data-[highlighted]:!bg-[var(--portal-accent-soft)] data-[highlighted]:!text-[var(--portal-ink)] data-[highlighted]:before:!bg-transparent',
+  itemLabel: 'truncate'
+}
 
 const accountMenuItems = computed(() => [
   {
-    label: "Profile",
+    label: 'Profile',
     onSelect: () => {
-      void navigateTo("/vendor/profile");
-    },
+      void navigateTo('/vendor/profile')
+    }
   },
   {
-    label: isLoggingOut.value ? "Signing out..." : "Logout",
+    label: isLoggingOut.value ? 'Signing out...' : 'Logout',
     disabled: isLoggingOut.value,
     onSelect: () => {
-      void handleLogout();
-    },
-  },
-]);
+      void handleLogout()
+    }
+  }
+])
 
 onMounted(async () => {
-  await auth.ensureInitialized();
-  hasHydrated.value = true;
-});
+  await auth.ensureInitialized()
+  hasHydrated.value = true
+})
 
 async function handleLogout(): Promise<void> {
-  isLoggingOut.value = true;
-  await auth.logout();
-  isMobileMenuOpen.value = false;
-  isLoggingOut.value = false;
-  await navigateTo("/login");
+  isLoggingOut.value = true
+  await auth.logout()
+  isMobileMenuOpen.value = false
+  isLoggingOut.value = false
+  await navigateTo('/login')
 }
 
 function toggleMobileMenu(): void {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
 
 function closeMobileMenu(): void {
-  isMobileMenuOpen.value = false;
+  isMobileMenuOpen.value = false
 }
 </script>
 
 <template>
   <UApp class="app-shell app-shell--vendor">
-    <UHeader :toggle="false" class="app-header" :ui="headerUi">
+    <UHeader
+      :toggle="false"
+      class="app-header"
+      :ui="headerUi"
+    >
       <template #left>
-        <NuxtLink to="/vendor" class="app-brand">
+        <NuxtLink
+          to="/vendor"
+          class="app-brand"
+        >
           <img
             src="/LogoIcon.svg"
             alt="Book Suey logo"
             class="app-brand__mark"
-          />
+          >
           <span class="app-brand__text">
             <span class="app-brand__name">Book Suey</span>
             <span class="app-brand__meta">Vendor Portal</span>
@@ -92,14 +99,22 @@ function closeMobileMenu(): void {
         </button>
 
         <nav class="app-nav app-nav--desktop">
-          <NuxtLink to="/vendor" class="app-nav__link">Overview</NuxtLink>
-          <NuxtLink to="/vendor/sales" class="app-nav__link">Sales</NuxtLink>
-          <NuxtLink to="/vendor/balance" class="app-nav__link"
-            >Balance</NuxtLink
-          >
-          <NuxtLink to="/vendor/payouts" class="app-nav__link"
-            >Payouts</NuxtLink
-          >
+          <NuxtLink
+            to="/vendor"
+            class="app-nav__link"
+          >Overview</NuxtLink>
+          <NuxtLink
+            to="/vendor/sales"
+            class="app-nav__link"
+          >Sales</NuxtLink>
+          <NuxtLink
+            to="/vendor/balance"
+            class="app-nav__link"
+          >Balance</NuxtLink>
+          <NuxtLink
+            to="/vendor/payouts"
+            class="app-nav__link"
+          >Payouts</NuxtLink>
 
           <UDropdownMenu
             v-slot="{ open }"
@@ -142,32 +157,27 @@ function closeMobileMenu(): void {
           to="/vendor"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Overview</NuxtLink
-        >
+        >Overview</NuxtLink>
         <NuxtLink
           to="/vendor/sales"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Sales</NuxtLink
-        >
+        >Sales</NuxtLink>
         <NuxtLink
           to="/vendor/balance"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Balance</NuxtLink
-        >
+        >Balance</NuxtLink>
         <NuxtLink
           to="/vendor/payouts"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Payouts</NuxtLink
-        >
+        >Payouts</NuxtLink>
         <NuxtLink
           to="/vendor/profile"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Profile</NuxtLink
-        >
+        >Profile</NuxtLink>
         <button
           type="button"
           class="app-mobile-menu__link app-mobile-menu__button"

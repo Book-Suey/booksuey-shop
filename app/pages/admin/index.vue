@@ -102,6 +102,12 @@ const cards = computed(() => {
         >
           Open payout failures
         </NuxtLink>
+        <NuxtLink
+          to="/admin/user-guide"
+          class="portal-button portal-button--secondary"
+        >
+          Open admin user guide
+        </NuxtLink>
       </div>
     </header>
 

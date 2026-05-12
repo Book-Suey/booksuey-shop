@@ -7,6 +7,7 @@ definePageMeta({
 interface PayoutFailure {
   payoutRequestId: string
   vendorId: string
+  vendorDisplayName: string
   amount: string
   currency: 'USD'
   status: 'failed'
@@ -36,6 +37,8 @@ const auth = useAdminAuth()
 const recheckingPayoutId = ref<string | null>(null)
 const recheckMessage = ref<string | null>(null)
 const recheckError = ref<string | null>(null)
+const copyRequestMessage = ref<string | null>(null)
+const copyRequestError = ref<string | null>(null)
 const lastRecheckAtByPayoutId = ref<Record<string, string>>({})
 
 const filters = reactive({
@@ -45,8 +48,7 @@ const filters = reactive({
 })
 
 const columns = [
-  { key: 'payoutRequestId', label: 'Payout Request' },
-  { key: 'vendorId', label: 'Vendor' },
+  { key: 'vendorDisplayName', label: 'Vendor' },
   { key: 'amount', label: 'Amount' },
   { key: 'failedAt', label: 'Failed At' },
   { key: 'failureReason', label: 'Failure Reason' },
@@ -161,6 +163,7 @@ const csvContent = computed(() => {
   const header = [
     'payoutRequestId',
     'vendorId',
+    'vendorDisplayName',
     'amount',
     'failedAt',
     'methodType',
@@ -176,6 +179,7 @@ const csvContent = computed(() => {
   const rows = data.value.payoutFailures.map(failure => [
     failure.payoutRequestId,
     failure.vendorId,
+    failure.vendorDisplayName,
     failure.amount,
     failure.failedAt ?? '',
     failure.disbursement?.methodType ?? '',
@@ -201,6 +205,22 @@ const csvFileName = computed(() => {
   const dateStamp = new Date().toISOString().slice(0, 10)
   return `payout-failures-${dateStamp}.csv`
 })
+
+async function copyRequestId(payoutRequestId: string): Promise<void> {
+  copyRequestMessage.value = null
+  copyRequestError.value = null
+
+  if (!import.meta.client) {
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(payoutRequestId)
+    copyRequestMessage.value = `Copied request ID: ${payoutRequestId}`
+  } catch {
+    copyRequestError.value = 'Unable to copy request ID right now.'
+  }
+}
 
 async function recheckPayoutProviderStatus(
   payoutRequestId: string
@@ -385,14 +405,25 @@ async function recheckPayoutProviderStatus(
       >
         {{ recheckError }}
       </p>
+      <p
+        v-if="copyRequestMessage"
+        class="auth-success"
+      >
+        {{ copyRequestMessage }}
+      </p>
+      <p
+        v-if="copyRequestError"
+        class="auth-error"
+      >
+        {{ copyRequestError }}
+      </p>
 
       <AppDataTable
         :columns="columns"
         :rows="data.payoutFailures"
         :row-key="(row) => row.payoutRequestId"
         :mobile-columns="[
-          'payoutRequestId',
-          'vendorId',
+          'vendorDisplayName',
           'failedAt',
           'amount',
           'failureReason',
@@ -409,10 +440,12 @@ async function recheckPayoutProviderStatus(
         </template>
 
         <template #cell:failureReason="{ row }">
-          {{
-            (row.disbursement as PayoutFailure["disbursement"])
-              ?.failureReason || "n/a"
-          }}
+          <div class="failure-reason-cell">
+            {{
+              (row.disbursement as PayoutFailure["disbursement"])
+                ?.failureReason || "n/a"
+            }}
+          </div>
         </template>
 
         <template #cell:reconciliation="{ row }">
@@ -435,20 +468,37 @@ async function recheckPayoutProviderStatus(
           <div class="vendor-actions">
             <NuxtLink
               :to="`/admin/payout-requests/${row.payoutRequestId as string}`"
+              class="auth-inline-link"
             >
-              Open request
+              View
             </NuxtLink>
 
-            <button
-              type="button"
-              class="portal-button portal-button--secondary"
-              :disabled="
-                recheckingPayoutId === (row.payoutRequestId as string)
-                  || (row.disbursement as PayoutFailure['disbursement'])?.status
-                    !== 'disbursing'
-              "
-              @click="
-                recheckPayoutProviderStatus(row.payoutRequestId as string)
+            <span> • </span>
+
+            <a
+              href="#"
+              class="auth-inline-link"
+              @click.prevent="copyRequestId(row.payoutRequestId as string)"
+            >
+              Copy Request ID
+            </a>
+
+            <span> • </span>
+
+            <a
+              href="#"
+              class="auth-inline-link"
+              :class="{
+                'auth-inline-link--disabled':
+                  recheckingPayoutId === (row.payoutRequestId as string)
+                  || (row.disbursement as PayoutFailure['disbursement'])
+                    ?.status !== 'disbursing'
+              }"
+              @click.prevent="
+                recheckingPayoutId !== (row.payoutRequestId as string)
+                  && (row.disbursement as PayoutFailure['disbursement'])?.status
+                    === 'disbursing'
+                  && recheckPayoutProviderStatus(row.payoutRequestId as string)
               "
             >
               {{
@@ -456,7 +506,7 @@ async function recheckPayoutProviderStatus(
                   ? "Rechecking..."
                   : "Recheck provider"
               }}
-            </button>
+            </a>
 
             <p
               v-if="lastRecheckAtByPayoutId[row.payoutRequestId as string]"
@@ -475,3 +525,12 @@ async function recheckPayoutProviderStatus(
     </article>
   </section>
 </template>
+
+<style scoped>
+.failure-reason-cell {
+  max-width: 22rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+</style>

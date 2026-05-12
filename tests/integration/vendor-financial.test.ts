@@ -284,7 +284,7 @@ describe('Vendor Financial Endpoints', () => {
     expect(filteredSales.sales[0].title).toBe('Book Two')
   })
 
-  it('returns chronological ledger entries with sale references and balance summary', async () => {
+  it('returns newest-first ledger entries with sale references and balance summary', async () => {
     await seedVendorFinancialData()
 
     const { default: getVendorLedger } = await import('../../server/api/vendor/ledger.get')
@@ -296,16 +296,18 @@ describe('Vendor Financial Endpoints', () => {
       ledgerEntries: Array<{
         entryType: string
         balanceImpact: string
-        reference: { sale?: { title: string } }
+        sale?: { title: string }
       }>
     }
 
     expect(ledgerResult.ledgerEntries).toHaveLength(4)
-    expect(ledgerResult.ledgerEntries[0].entryType).toBe('sale')
-    expect(ledgerResult.ledgerEntries[0].balanceImpact).toBe('9.00')
-    expect(ledgerResult.ledgerEntries[0].reference.sale?.title).toBe('Book One')
-    expect(ledgerResult.ledgerEntries[2].entryType).toBe('reservation')
-    expect(ledgerResult.ledgerEntries[2].balanceImpact).toBe('-5.00')
+    expect(ledgerResult.ledgerEntries[0].entryType).toBe('paid')
+    expect(ledgerResult.ledgerEntries[0].balanceImpact).toBe('-5.00')
+    expect(ledgerResult.ledgerEntries[1].entryType).toBe('reservation')
+    expect(ledgerResult.ledgerEntries[1].balanceImpact).toBe('-5.00')
+    expect(ledgerResult.ledgerEntries[3].entryType).toBe('sale')
+    expect(ledgerResult.ledgerEntries[3].balanceImpact).toBe('9.00')
+    expect(ledgerResult.ledgerEntries[3].sale?.title).toBe('Book One')
 
     const balanceResult = await getVendorBalance({
       context: { vendorId: 'vendor_1' }

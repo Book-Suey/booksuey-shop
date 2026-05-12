@@ -5,6 +5,7 @@ import { BalanceSnapshot } from '../../models/BalanceSnapshot'
 import { LedgerEntry } from '../../models/LedgerEntry'
 import { PaymentDisbursement } from '../../models/PaymentDisbursement'
 import { PayoutRequest } from '../../models/PayoutRequest'
+import { Vendor } from '../../models/Vendor'
 import { requireAdmin } from '../../utils/adminAuth'
 
 const payoutFailuresQuerySchema = z.object({
@@ -57,14 +58,17 @@ export default defineEventHandler(async (event) => {
   const payoutRequestIds = failedPayouts.map((request: { payoutRequestId: string }) => request.payoutRequestId)
   const vendorIds = Array.from(new Set(failedPayouts.map((request: { vendorId: string }) => request.vendorId)))
 
-  const [disbursements, releaseEntries, balanceSnapshots] = await Promise.all([
+  const [disbursements, releaseEntries, balanceSnapshots, vendors] = await Promise.all([
     PaymentDisbursement.find({ payoutRequestId: { $in: payoutRequestIds } }).sort({ updatedAt: -1, _id: -1 }),
     LedgerEntry.find({
       referenceType: 'PayoutRequest',
       referenceId: { $in: payoutRequestIds },
       entryType: 'release'
     }).sort({ occurredAt: -1, _id: -1 }),
-    BalanceSnapshot.find({ vendorId: { $in: vendorIds } })
+    BalanceSnapshot.find({ vendorId: { $in: vendorIds } }),
+    Vendor.find({ vendorId: { $in: vendorIds } })
+      .select({ vendorId: 1, displayName: 1 })
+      .lean()
   ])
 
   const disbursementByPayoutId = new Map<string, {
@@ -111,6 +115,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const vendorDisplayNameById = new Map<string, string>(
+    (vendors as Array<{ vendorId: string, displayName: string }>).map(
+      vendor => [vendor.vendorId, vendor.displayName]
+    )
+  )
+
   return {
     payoutFailures: failedPayouts.map((payoutRequest: {
       payoutRequestId: string
@@ -127,6 +137,8 @@ export default defineEventHandler(async (event) => {
       return {
         payoutRequestId: payoutRequest.payoutRequestId,
         vendorId: payoutRequest.vendorId,
+        vendorDisplayName:
+          vendorDisplayNameById.get(payoutRequest.vendorId) || payoutRequest.vendorId,
         amount: expectedReleaseAmount,
         currency: payoutRequest.currency,
         status: payoutRequest.status,

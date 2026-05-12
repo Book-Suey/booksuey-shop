@@ -12,6 +12,8 @@ interface VendorRecord {
   phone?: string
   status: 'active' | 'inactive'
   approvedVendorId?: string
+  totalSalesCount: number
+  currentBalance: string
 }
 
 interface ApprovedVendorRecord {
@@ -104,13 +106,27 @@ const inviteOptions = computed(() => {
 })
 
 const columns = [
-  { key: 'vendorId', label: 'Vendor ID' },
   { key: 'displayName', label: 'Display Name' },
   { key: 'email', label: 'Email' },
+  { key: 'totalSalesCount', label: 'Total Sales' },
+  { key: 'currentBalance', label: 'Current Balance' },
   { key: 'status', label: 'Status' },
   { key: 'approvedVendorId', label: 'Approved Vendor' },
   { key: 'actions', label: 'Actions' }
 ]
+
+function formatCurrency(amount: string): string {
+  const parsed = Number.parseFloat(amount)
+
+  if (Number.isNaN(parsed)) {
+    return amount
+  }
+
+  return parsed.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  })
+}
 
 function openInviteModal(): void {
   inviteError.value = null
@@ -247,13 +263,20 @@ async function copyInviteLink(): Promise<void> {
         :row-key="(row) => row.vendorId"
         :mobile-columns="[
           'displayName',
+          'totalSalesCount',
+          'currentBalance',
           'status',
           'approvedVendorId',
           'email',
-          'vendorId',
           'actions'
         ]"
       >
+        <template #cell:totalSalesCount="{ row }">
+          {{ Number(row.totalSalesCount as number) }}
+        </template>
+        <template #cell:currentBalance="{ row }">
+          {{ formatCurrency(row.currentBalance as string) }}
+        </template>
         <template #cell:status="{ row }">
           <AppStatusBadge :status="row.status as string" />
         </template>

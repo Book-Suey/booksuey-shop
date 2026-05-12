@@ -28,6 +28,25 @@ interface PayoutRequestDetail {
   failedAt?: string
 }
 
+interface Disbursement {
+  disbursementId: string
+  methodType: 'paypal' | 'venmo'
+  providerReferenceId: string
+  status: 'disbursing' | 'paid' | 'failed'
+  disbursedAt: string
+  failureReason?: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface LedgerEntry {
+  entryId: string
+  entryType: 'sale' | 'reservation' | 'release' | 'paid'
+  amount: string
+  currency: 'USD'
+  occurredAt: string
+}
+
 const auth = useAdminAuth()
 const route = useRoute()
 const router = useRouter()
@@ -45,6 +64,12 @@ const approvalForm = reactive({
 const rejectionForm = reactive({
   reason: ''
 })
+
+const ledgerColumns = [
+  { key: 'entryType', label: 'Entry type' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'occurredAt', label: 'Occurred at' }
+]
 
 function formatDate(value: string): string {
   const parsed = new Date(value)
@@ -75,13 +100,14 @@ const { data, pending, error, refresh } = await useAsyncData(
   async () => {
     await auth.ensureInitialized()
 
-    return await $fetch<{ payoutRequest: PayoutRequestDetail }>(
-      `/api/admin/payout-requests/${route.params.payoutId as string}`,
-      {
-        method: 'GET',
-        headers: auth.authHeaders()
-      }
-    )
+    return await $fetch<{
+      payoutRequest: PayoutRequestDetail
+      disbursement: Disbursement | null
+      ledgerEntries: LedgerEntry[]
+    }>(`/api/admin/payout-requests/${route.params.payoutId as string}`, {
+      method: 'GET',
+      headers: auth.authHeaders()
+    })
   },
   {
     server: false,
@@ -102,7 +128,9 @@ const { data, pending, error, refresh } = await useAsyncData(
         disbursingAt: undefined,
         paidAt: undefined,
         failedAt: undefined
-      }
+      },
+      disbursement: null as Disbursement | null,
+      ledgerEntries: [] as LedgerEntry[]
     })
   }
 )
@@ -530,7 +558,107 @@ async function handleRecheckDisbursement(): Promise<void> {
             </p>
           </div>
         </article>
+
+        <article
+          v-if="data.payoutRequest.status === 'failed' && data.disbursement"
+          class="vendor-panel stack-grid"
+        >
+          <div>
+            <h2>Failure log</h2>
+            <p class="panel-copy">
+              Troubleshooting information for this failed payout attempt.
+            </p>
+          </div>
+
+          <div class="stack-grid">
+            <div>
+              <p class="panel-label">
+                Disbursement ID
+              </p>
+              <p class="panel-copy">
+                {{ data.disbursement.disbursementId }}
+              </p>
+            </div>
+
+            <div>
+              <p class="panel-label">
+                Payment method
+              </p>
+              <p class="panel-copy">
+                {{ data.disbursement.methodType }}
+              </p>
+            </div>
+
+            <div>
+              <p class="panel-label">
+                Provider reference
+              </p>
+              <p class="panel-copy">
+                {{ data.disbursement.providerReferenceId }}
+              </p>
+            </div>
+
+            <div v-if="data.disbursement.failureReason">
+              <p class="panel-label">
+                Failure reason
+              </p>
+              <p class="panel-copy">
+                {{ data.disbursement.failureReason }}
+              </p>
+            </div>
+
+            <div>
+              <p class="panel-label">
+                Disbursement status
+              </p>
+              <p class="panel-copy">
+                <AppStatusBadge :status="data.disbursement.status" />
+              </p>
+            </div>
+
+            <div>
+              <p class="panel-label">
+                Attempted at
+              </p>
+              <p class="panel-copy">
+                {{ formatDate(data.disbursement.disbursedAt) }}
+              </p>
+            </div>
+          </div>
+        </article>
+
+        <article
+          v-if="data.ledgerEntries.length > 0"
+          class="vendor-panel"
+        >
+          <h2>Linked ledger entries</h2>
+
+          <AppDataTable
+            :columns="ledgerColumns"
+            :rows="data.ledgerEntries"
+            :row-key="(row) => row.entryId"
+          >
+            <template #cell:amount="{ row }">
+              {{ formatCurrency(row.amount as string) }}
+            </template>
+
+            <template #cell:occurredAt="{ row }">
+              {{ formatDate(row.occurredAt as string) }}
+            </template>
+          </AppDataTable>
+        </article>
       </template>
     </template>
   </section>
 </template>
+
+<style scoped>
+.panel-label {
+  color: var(--portal-ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 0.25rem 0;
+}
+</style>

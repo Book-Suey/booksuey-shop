@@ -1,4 +1,7 @@
 import { connectToDatabase } from '../../../config/database'
+import { LedgerEntry } from '../../../models/LedgerEntry'
+import type { ILedgerEntry } from '../../../models/LedgerEntry'
+import { PaymentDisbursement } from '../../../models/PaymentDisbursement'
 import { PayoutRequest } from '../../../models/PayoutRequest'
 import { Vendor } from '../../../models/Vendor'
 import { requireAdmin } from '../../../utils/adminAuth'
@@ -24,6 +27,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const vendor = await Vendor.findOne({ vendorId: payoutRequest.vendorId })
+  const disbursement = await PaymentDisbursement.findOne({ payoutRequestId: payoutId }).sort({ createdAt: -1 })
+  const ledgerEntries = await LedgerEntry.find({
+    referenceType: 'PayoutRequest',
+    referenceId: payoutId
+  }).sort({ occurredAt: -1 })
 
   return {
     payoutRequest: {
@@ -45,12 +53,31 @@ export default defineEventHandler(async (event) => {
       createdAt: payoutRequest.createdAt,
       updatedAt: payoutRequest.updatedAt
     },
+    disbursement: disbursement
+      ? {
+          disbursementId: disbursement.disbursementId,
+          methodType: disbursement.methodType,
+          providerReferenceId: disbursement.providerReferenceId,
+          status: disbursement.status,
+          disbursedAt: disbursement.disbursedAt,
+          failureReason: disbursement.failureReason,
+          createdAt: disbursement.createdAt,
+          updatedAt: disbursement.updatedAt
+        }
+      : null,
     vendor: vendor
       ? {
           preferredPayoutMethod: vendor.preferredPayoutMethod,
           paypalEmail: vendor.paypalEmail,
           venmoHandle: vendor.venmoHandle
         }
-      : null
+      : null,
+    ledgerEntries: ledgerEntries.map((entry: ILedgerEntry) => ({
+      entryId: entry.entryId,
+      entryType: entry.entryType,
+      amount: entry.amount.toString(),
+      currency: entry.currency,
+      occurredAt: entry.occurredAt
+    }))
   }
 })

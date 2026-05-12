@@ -92,7 +92,9 @@ const { data, pending, error, refresh } = await useAsyncData(
 
     if (filters.status === 'active') {
       query.status = 'requested,approved,disbursing'
-    } else if (filters.status !== 'all') {
+    } else if (filters.status === 'all') {
+      query.status = 'requested,approved,disbursing,paid,failed,rejected'
+    } else {
       query.status = filters.status
     }
 
@@ -177,7 +179,10 @@ async function reconcileDisbursingPayouts(): Promise<void> {
         disbursements to vendors.
       </p>
 
-      <div class="vendor-actions">
+      <div
+        class="vendor-actions"
+        style="margin-bottom: 1.5rem"
+      >
         <button
           type="button"
           class="portal-button portal-button--primary"

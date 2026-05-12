@@ -12,16 +12,37 @@ interface ApprovedVendorRecord {
   phone?: string
   isLinked: boolean
   linkedVendorId: string | null
+  totalSalesCount: number
+}
+
+interface InviteVendorResponse {
+  message: string
+  invitePath: string
+  inviteEmail?: {
+    delivered: boolean
+    skippedReason?: string
+  }
+  vendor: {
+    vendorId: string
+    approvedVendorId?: string
+    email: string
+  }
 }
 
 const auth = useAdminAuth()
 const search = ref('')
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
+const showInviteModal = ref(false)
 const isCreating = ref(false)
 const isEditing = ref(false)
+const isInviting = ref(false)
 const createError = ref<string | null>(null)
 const editError = ref<string | null>(null)
+const inviteError = ref<string | null>(null)
+const inviteSuccess = ref<InviteVendorResponse | null>(null)
+const copyInviteMessage = ref<string | null>(null)
+const inviteApprovedVendorId = ref('')
 const editTargetId = ref<string | null>(null)
 
 const createForm = reactive({
@@ -82,9 +103,19 @@ const columns = [
   { key: 'name', label: 'Name' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
+  { key: 'totalSalesCount', label: 'Total Sales' },
   { key: 'linked', label: 'Account Status' },
   { key: 'actions', label: 'Actions' }
 ]
+
+const inviteOptions = computed(() => {
+  return data.value.approvedVendors
+    .filter(approvedVendor => !approvedVendor.isLinked)
+    .map(approvedVendor => ({
+      value: approvedVendor.basilId,
+      label: `${approvedVendor.lastName}, ${approvedVendor.firstName} (${approvedVendor.email})`
+    }))
+})
 
 function openCreateModal(): void {
   createError.value = null
@@ -116,6 +147,31 @@ function closeEditModal(): void {
   }
 
   showEditModal.value = false
+}
+
+function openInviteModal(approvedVendorId?: string): void {
+  inviteError.value = null
+  inviteSuccess.value = null
+  copyInviteMessage.value = null
+
+  if (
+    approvedVendorId
+    && inviteOptions.value.some(option => option.value === approvedVendorId)
+  ) {
+    inviteApprovedVendorId.value = approvedVendorId
+  } else {
+    inviteApprovedVendorId.value = inviteOptions.value[0]?.value || ''
+  }
+
+  showInviteModal.value = true
+}
+
+function closeInviteModal(): void {
+  if (isInviting.value) {
+    return
+  }
+
+  showInviteModal.value = false
 }
 
 async function submitNewApprovedVendor(): Promise<void> {
@@ -188,6 +244,59 @@ async function submitApprovedVendorEdit(): Promise<void> {
       = statusMessage || 'Unable to update approved vendor record.'
   } finally {
     isEditing.value = false
+  }
+}
+
+async function submitVendorInvite(): Promise<void> {
+  inviteError.value = null
+  inviteSuccess.value = null
+  copyInviteMessage.value = null
+
+  if (!inviteApprovedVendorId.value) {
+    inviteError.value = 'Select an approved vendor to invite.'
+    return
+  }
+
+  isInviting.value = true
+
+  try {
+    await auth.ensureInitialized()
+
+    inviteSuccess.value = await $fetch<InviteVendorResponse>(
+      '/api/admin/vendors/invite',
+      {
+        method: 'POST',
+        headers: auth.authHeaders(),
+        body: {
+          approvedVendorId: inviteApprovedVendorId.value
+        }
+      }
+    )
+
+    await refresh()
+  } catch (requestError: unknown) {
+    const statusMessage = (requestError as { statusMessage?: string })
+      ?.statusMessage
+    inviteError.value
+      = statusMessage || 'Unable to send vendor invite right now.'
+  } finally {
+    isInviting.value = false
+  }
+}
+
+async function copyInviteLink(): Promise<void> {
+  if (!inviteSuccess.value || !import.meta.client) {
+    return
+  }
+
+  const absoluteInviteLink = `${window.location.origin}${inviteSuccess.value.invitePath}`
+
+  try {
+    await navigator.clipboard.writeText(absoluteInviteLink)
+    copyInviteMessage.value = 'Invite link copied to clipboard.'
+  } catch {
+    copyInviteMessage.value
+      = 'Unable to copy link automatically. Copy it manually from the message above.'
   }
 }
 </script>
@@ -263,27 +372,142 @@ async function submitApprovedVendorEdit(): Promise<void> {
         <template #cell:phone="{ row }">
           {{ (row.phone as string) || "—" }}
         </template>
+        <template #cell:totalSalesCount="{ row }">
+          {{ Number((row as ApprovedVendorRecord).totalSalesCount || 0) }}
+        </template>
         <template #cell:linked="{ row }">
-          <AppStatusBadge
-            :status="
-              (row as ApprovedVendorRecord).isLinked ? 'active' : 'inactive'
-            "
-            :label="
-              (row as ApprovedVendorRecord).isLinked ? 'Linked' : 'Not linked'
-            "
-          />
+          <div class="linked-status-cell">
+            <AppStatusBadge
+              :status="
+                (row as ApprovedVendorRecord).isLinked ? 'active' : 'inactive'
+              "
+              :label="
+                (row as ApprovedVendorRecord).isLinked ? 'Linked' : 'Not linked'
+              "
+            />
+            <a
+              v-if="!(row as ApprovedVendorRecord).isLinked"
+              href="#"
+              class="auth-inline-link"
+              @click.prevent="
+                openInviteModal((row as ApprovedVendorRecord).basilId)
+              "
+            >Invite User</a>
+          </div>
         </template>
         <template #cell:actions="{ row }">
+          <NuxtLink
+            :to="`/admin/vendors/approved-vendors/${(row as ApprovedVendorRecord).basilId}`"
+            class="auth-inline-link"
+          >View</NuxtLink>
+          <span> • </span>
           <a
             href="#"
             class="auth-inline-link"
             @click.prevent="openEditModal(row as ApprovedVendorRecord)"
-          >
-            Edit
-          </a>
+          >Edit</a>
         </template>
       </AppDataTable>
     </article>
+
+    <div
+      v-if="showInviteModal"
+      class="modal-backdrop"
+      @click.self="closeInviteModal"
+    >
+      <article class="modal-panel">
+        <div class="vendor-panel__title">
+          <h2>Invite vendor</h2>
+          <button
+            type="button"
+            class="portal-button portal-button--secondary"
+            :disabled="isInviting"
+            @click="closeInviteModal"
+          >
+            Close
+          </button>
+        </div>
+
+        <p class="panel-copy">
+          Choose an approved vendor record to send a login invite. This creates
+          a linked vendor account when needed and prepares a password setup
+          link.
+        </p>
+
+        <form
+          class="auth-form"
+          @submit.prevent="submitVendorInvite"
+        >
+          <label>
+            <span>Approved vendor</span>
+            <select
+              v-model="inviteApprovedVendorId"
+              :disabled="inviteOptions.length === 0"
+            >
+              <option
+                v-if="inviteOptions.length === 0"
+                value=""
+              >
+                No unlinked approved vendors available
+              </option>
+              <option
+                v-for="option in inviteOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+
+          <p
+            v-if="inviteError"
+            class="auth-error"
+          >
+            {{ inviteError }}
+          </p>
+
+          <p
+            v-if="inviteSuccess"
+            class="auth-success"
+          >
+            {{ inviteSuccess.message }} Invite link:
+            {{ inviteSuccess.invitePath }}
+            <template v-if="inviteSuccess.inviteEmail?.delivered">
+              Email sent.
+            </template>
+            <template v-else-if="inviteSuccess.inviteEmail?.skippedReason">
+              Email not sent: {{ inviteSuccess.inviteEmail.skippedReason }}.
+            </template>
+          </p>
+
+          <p
+            v-if="copyInviteMessage"
+            class="panel-copy"
+          >
+            {{ copyInviteMessage }}
+          </p>
+
+          <div class="vendor-actions">
+            <button
+              type="submit"
+              class="portal-button portal-button--primary"
+              :disabled="isInviting || inviteOptions.length === 0"
+            >
+              {{ isInviting ? "Sending invite..." : "Send invite" }}
+            </button>
+            <button
+              v-if="inviteSuccess"
+              type="button"
+              class="portal-button portal-button--secondary"
+              @click="copyInviteLink"
+            >
+              Copy invite link
+            </button>
+          </div>
+        </form>
+      </article>
+    </div>
 
     <div
       v-if="showCreateModal"
@@ -458,3 +682,10 @@ async function submitApprovedVendorEdit(): Promise<void> {
     </div>
   </section>
 </template>
+
+<style scoped>
+.linked-status-cell {
+  display: grid;
+  gap: 0.35rem;
+}
+</style>

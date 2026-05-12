@@ -1,84 +1,92 @@
 <script setup lang="ts">
-const adminAuth = useAdminAuth();
-const isLoggingOut = ref(false);
-const isMobileMenuOpen = ref(false);
+const adminAuth = useAdminAuth()
+const isLoggingOut = ref(false)
+const isMobileMenuOpen = ref(false)
 
 const headerUi = {
-  container: "app-header__container",
-};
+  container: 'app-header__container'
+}
 
 const adminNavMenuUi = {
   content:
-    "min-w-56 rounded-none border-2 border-[var(--portal-line)] bg-[var(--portal-paper)] p-1 shadow-none",
-  item: "w-full rounded-none border-2 border-transparent px-[0.85rem] py-[0.6rem] text-left font-mono text-[0.8rem] font-semibold uppercase tracking-[0.1em] !text-[var(--portal-ink-soft)] before:!bg-transparent !transition-none before:!transition-none data-[highlighted]:border-[var(--portal-line)] data-[highlighted]:!bg-[var(--portal-accent-soft)] data-[highlighted]:!text-[var(--portal-ink)] data-[highlighted]:before:!bg-transparent",
-  itemLabel: "truncate",
-};
+    'min-w-56 rounded-none border-2 border-[var(--portal-line)] bg-[var(--portal-paper)] p-1 shadow-none',
+  item: 'w-full rounded-none border-2 border-transparent px-[0.85rem] py-[0.6rem] text-left font-mono text-[0.8rem] font-semibold uppercase tracking-[0.1em] !text-[var(--portal-ink-soft)] before:!bg-transparent !transition-none before:!transition-none data-[highlighted]:border-[var(--portal-line)] data-[highlighted]:!bg-[var(--portal-accent-soft)] data-[highlighted]:!text-[var(--portal-ink)] data-[highlighted]:before:!bg-transparent',
+  itemLabel: 'truncate'
+}
 
 function createAdminMenuItem(label: string, to: string) {
   return {
     label,
     onSelect: () => {
-      void navigateTo(to);
-    },
-  };
+      void navigateTo(to)
+    }
+  }
 }
 
 const vendorMenuItems = [
-  createAdminMenuItem("Vendor Accounts", "/admin/vendors"),
+  createAdminMenuItem('Vendor Accounts', '/admin/vendors'),
   createAdminMenuItem(
-    "Approved Vendor List",
-    "/admin/vendors/approved-vendors",
+    'Approved Vendor List',
+    '/admin/vendors/approved-vendors'
   ),
   createAdminMenuItem(
-    "Verified Non-Vendor Sources",
-    "/admin/vendors/non-vendor-sources",
-  ),
-];
+    'Verified Non-Vendor Sources',
+    '/admin/vendors/non-vendor-sources'
+  )
+]
 
 const payoutMenuItems = [
-  createAdminMenuItem("Manage Payouts", "/admin/payout-requests"),
+  createAdminMenuItem('Manage Payouts', '/admin/payout-requests'),
   createAdminMenuItem(
-    "Payout Failures",
-    "/admin/payout-requests/payout-failures",
-  ),
-];
+    'Payout Failures',
+    '/admin/payout-requests/payout-failures'
+  )
+]
 
 const adminMenuItems = [
-  createAdminMenuItem("Import Sales", "/admin/imports"),
-  createAdminMenuItem("Audit", "/admin/audit"),
-];
+  createAdminMenuItem('Import Sales', '/admin/imports'),
+  createAdminMenuItem('Audit', '/admin/audit'),
+  createAdminMenuItem('Admin User Guide', '/admin/user-guide')
+]
 
 onMounted(async () => {
-  await adminAuth.ensureInitialized();
-});
+  await adminAuth.ensureInitialized()
+})
 
 async function handleLogout(): Promise<void> {
-  isLoggingOut.value = true;
-  await adminAuth.logout();
-  isMobileMenuOpen.value = false;
-  isLoggingOut.value = false;
-  await navigateTo("/login");
+  isLoggingOut.value = true
+  await adminAuth.logout()
+  isMobileMenuOpen.value = false
+  isLoggingOut.value = false
+  await navigateTo('/login')
 }
 
 function toggleMobileMenu(): void {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
 
 function closeMobileMenu(): void {
-  isMobileMenuOpen.value = false;
+  isMobileMenuOpen.value = false
 }
 </script>
 
 <template>
   <UApp class="app-shell app-shell--admin">
-    <UHeader :toggle="false" class="app-header" :ui="headerUi">
+    <UHeader
+      :toggle="false"
+      class="app-header"
+      :ui="headerUi"
+    >
       <template #left>
-        <NuxtLink to="/admin" class="app-brand">
+        <NuxtLink
+          to="/admin"
+          class="app-brand"
+        >
           <img
             src="/LogoIcon.svg"
             alt="Book Suey logo"
             class="app-brand__mark"
-          />
+          >
           <span class="app-brand__text">
             <span class="app-brand__name">Book Suey</span>
             <span class="app-brand__meta">Admin Console</span>
@@ -101,7 +109,10 @@ function closeMobileMenu(): void {
         </button>
 
         <nav class="app-nav app-nav--desktop">
-          <NuxtLink to="/admin" class="app-nav__link">Home</NuxtLink>
+          <NuxtLink
+            to="/admin"
+            class="app-nav__link"
+          >Home</NuxtLink>
 
           <UDropdownMenu
             v-slot="{ open }"
@@ -197,56 +208,59 @@ function closeMobileMenu(): void {
           to="/admin"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Home</NuxtLink
-        >
+        >Home</NuxtLink>
 
-        <p class="app-mobile-menu__section-title">Vendors</p>
+        <p class="app-mobile-menu__section-title">
+          Vendors
+        </p>
         <NuxtLink
           to="/admin/vendors"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Vendor Accounts</NuxtLink
-        >
+        >Vendor Accounts</NuxtLink>
         <NuxtLink
           to="/admin/vendors/approved-vendors"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Approved Vendor List</NuxtLink
-        >
+        >Approved Vendor List</NuxtLink>
         <NuxtLink
           to="/admin/vendors/non-vendor-sources"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Verified Non-Vendor Sources</NuxtLink
-        >
+        >Verified Non-Vendor Sources</NuxtLink>
 
-        <p class="app-mobile-menu__section-title">Payouts</p>
+        <p class="app-mobile-menu__section-title">
+          Payouts
+        </p>
         <NuxtLink
           to="/admin/payout-requests"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Manage Payouts</NuxtLink
-        >
+        >Manage Payouts</NuxtLink>
         <NuxtLink
           to="/admin/payout-requests/payout-failures"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Payout Failures</NuxtLink
-        >
+        >Payout Failures</NuxtLink>
 
-        <p class="app-mobile-menu__section-title">Admin</p>
+        <p class="app-mobile-menu__section-title">
+          Admin
+        </p>
         <NuxtLink
           to="/admin/imports"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Import Sales</NuxtLink
-        >
+        >Import Sales</NuxtLink>
         <NuxtLink
           to="/admin/audit"
           class="app-mobile-menu__link"
           @click="closeMobileMenu"
-          >Audit</NuxtLink
-        >
+        >Audit</NuxtLink>
+        <NuxtLink
+          to="/admin/user-guide"
+          class="app-mobile-menu__link"
+          @click="closeMobileMenu"
+        >Admin User Guide</NuxtLink>
 
         <button
           type="button"
