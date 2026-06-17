@@ -142,12 +142,13 @@ export default defineEventHandler(async (event) => {
 
   const ledgerEntries = entries.map((entry: {
     entryId: string
-    entryType: 'sale' | 'reservation' | 'release' | 'paid'
+    entryType: 'sale' | 'reservation' | 'release' | 'paid' | 'opening_balance'
     amount: { toString(): string }
     currency: string
     referenceType: string
     referenceId: string
     occurredAt: Date
+    description?: string
   }) => {
     const amount = entry.amount.toString()
     applyLedgerEntryToBalance(runningBalance, {
@@ -169,7 +170,7 @@ export default defineEventHandler(async (event) => {
       balanceAfter: runningBalance.availableAmount.toFixed(2),
       currency: entry.currency,
       occurredAt: entry.occurredAt,
-      description: reversalReason,
+      description: reversalReason ?? entry.description,
       ...(saleRecord
         ? {
             sale: {

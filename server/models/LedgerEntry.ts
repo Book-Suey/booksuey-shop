@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 
-export type LedgerEntryType = 'sale' | 'reservation' | 'release' | 'paid'
+export type LedgerEntryType = 'sale' | 'reservation' | 'release' | 'paid' | 'opening_balance'
 
 export interface ILedgerEntry {
   entryId: string
@@ -12,6 +12,7 @@ export interface ILedgerEntry {
   referenceType: string
   referenceId: string
   occurredAt: Date
+  description?: string
 }
 
 const LedgerEntrySchema = new mongoose.Schema<ILedgerEntry>(
@@ -26,12 +27,13 @@ const LedgerEntrySchema = new mongoose.Schema<ILedgerEntry>(
         return this.vendorId
       }
     },
-    entryType: { type: String, enum: ['sale', 'reservation', 'release', 'paid'], required: true },
+    entryType: { type: String, enum: ['sale', 'reservation', 'release', 'paid', 'opening_balance'], required: true },
     amount: { type: mongoose.Schema.Types.Decimal128, required: true },
     currency: { type: String, enum: ['USD'], required: true, default: 'USD' },
     referenceType: { type: String, required: true },
     referenceId: { type: String, required: true },
-    occurredAt: { type: Date, required: true }
+    occurredAt: { type: Date, required: true },
+    description: { type: String }
   },
   {
     timestamps: false,

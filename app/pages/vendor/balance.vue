@@ -61,7 +61,8 @@ function formatLedgerEntryType(entryType: string): string {
     sale: 'Sale Posted',
     reservation: 'Payout Reserved',
     release: 'Payout Reversed',
-    paid: 'Payout Paid'
+    paid: 'Payout Paid',
+    opening_balance: 'Opening Balance'
   }
 
   return labels[entryType] || entryType

@@ -3,7 +3,7 @@ import { LedgerEntry } from '../models/LedgerEntry'
 import { BalanceSnapshot } from '../models/BalanceSnapshot'
 import type { ILedgerEntry } from '../models/LedgerEntry'
 
-export type BalanceEntryType = 'sale' | 'reservation' | 'release' | 'paid'
+export type BalanceEntryType = 'sale' | 'reservation' | 'release' | 'paid' | 'opening_balance'
 
 type RunningBalance = {
   pendingAmount: Decimal
@@ -25,7 +25,7 @@ export function applyLedgerEntryToBalance(balance: RunningBalance, entry: {
 }): RunningBalance {
   const amount = new Decimal(entry.amount)
 
-  if (entry.entryType === 'sale') {
+  if (entry.entryType === 'sale' || entry.entryType === 'opening_balance') {
     balance.availableAmount = balance.availableAmount.plus(amount)
   }
 
@@ -50,7 +50,7 @@ export function applyLedgerEntryToBalance(balance: RunningBalance, entry: {
 export function getLedgerEntryBalanceImpact(entryType: BalanceEntryType, amount: string): string {
   const decimalAmount = new Decimal(amount)
 
-  if (entryType === 'sale' || entryType === 'release') {
+  if (entryType === 'sale' || entryType === 'release' || entryType === 'opening_balance') {
     return decimalAmount.toFixed(2)
   }
 

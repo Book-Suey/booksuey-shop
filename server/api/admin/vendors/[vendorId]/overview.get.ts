@@ -121,7 +121,7 @@ export default defineEventHandler(async (event) => {
         entryType: entry.entryType,
         amount,
         balanceImpact: getLedgerEntryBalanceImpact(
-          entry.entryType as 'sale' | 'reservation' | 'release' | 'paid',
+          entry.entryType as 'sale' | 'reservation' | 'release' | 'paid' | 'opening_balance',
           amount
         ),
         currency: entry.currency,
