@@ -1,10 +1,11 @@
 import Decimal from 'decimal.js'
 import { connectToDatabase } from '../../../config/database'
 import { ApprovedVendor } from '../../../models/ApprovedVendor'
+import { LedgerEntry } from '../../../models/LedgerEntry'
 import { SaleRecord } from '../../../models/SaleRecord'
 import { SalesImportBatch } from '../../../models/SalesImportBatch'
 import { Vendor } from '../../../models/Vendor'
-import { recomputeBalanceSnapshot } from '../../../utils/balance'
+import { applyLedgerEntryToBalance } from '../../../utils/balance'
 import { requireAdmin } from '../../../utils/adminAuth'
 
 export default defineEventHandler(async (event) => {
@@ -62,9 +63,17 @@ export default defineEventHandler(async (event) => {
     latestSoldAt: null as Date | null
   })
 
-  const linkedBalance = linkedVendor
-    ? await recomputeBalanceSnapshot(linkedVendor.vendorId, linkedVendor.approvedVendorId || undefined)
-    : null
+  const ledgerEntries = await LedgerEntry.find({ approvedVendorId }).sort({ occurredAt: 1, _id: 1 })
+  const runningBalance = { pendingAmount: new Decimal(0), availableAmount: new Decimal(0), paidAmount: new Decimal(0) }
+  for (const entry of ledgerEntries) {
+    applyLedgerEntryToBalance(runningBalance, { entryType: entry.entryType, amount: entry.amount.toString() })
+  }
+  const linkedBalance = {
+    pendingAmount: runningBalance.pendingAmount.toFixed(2),
+    availableAmount: runningBalance.availableAmount.toFixed(2),
+    paidAmount: runningBalance.paidAmount.toFixed(2),
+    asOf: new Date()
+  }
 
   // Get batch details for each sale
   const batchIds = [...new Set(sales.map((s: { sourceBatchId: string }) => s.sourceBatchId))]

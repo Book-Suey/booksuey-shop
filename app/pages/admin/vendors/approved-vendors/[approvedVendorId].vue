@@ -48,7 +48,7 @@ interface ImportedSaleRecord {
 interface ApprovedVendorDetailResponse {
   approvedVendor: ApprovedVendorRecord
   linkedVendor: LinkedVendorRecord | null
-  linkedBalance: LinkedVendorBalance | null
+  linkedBalance: LinkedVendorBalance
   importedSales: ImportedSaleRecord[]
   salesSummary: {
     count: number
@@ -93,7 +93,12 @@ const { data, pending, error, refresh } = await useAsyncData(
         phone: ''
       },
       linkedVendor: null,
-      linkedBalance: null,
+      linkedBalance: {
+        pendingAmount: '0.00',
+        availableAmount: '0.00',
+        paidAmount: '0.00',
+        asOf: new Date().toISOString()
+      },
       importedSales: [] as ImportedSaleRecord[],
       salesSummary: {
         count: 0,
@@ -402,10 +407,7 @@ function cancelEditing(): void {
           </p>
         </article>
 
-        <article
-          v-if="data.linkedBalance"
-          class="admin-card"
-        >
+        <article class="admin-card">
           <p class="admin-card__label">
             Available balance
           </p>
@@ -414,10 +416,7 @@ function cancelEditing(): void {
           </p>
         </article>
 
-        <article
-          v-if="data.linkedBalance"
-          class="admin-card"
-        >
+        <article class="admin-card">
           <p class="admin-card__label">
             Pending balance
           </p>

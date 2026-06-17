@@ -13,6 +13,7 @@ interface ApprovedVendorRecord {
   isLinked: boolean
   linkedVendorId: string | null
   totalSalesCount: number
+  availableBalance: string
 }
 
 interface InviteVendorResponse {
@@ -100,9 +101,23 @@ const columns = [
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
   { key: 'totalSalesCount', label: 'Total Sales' },
+  { key: 'availableBalance', label: 'Available Balance' },
   { key: 'linked', label: 'Account Status' },
   { key: 'actions', label: 'Actions' }
 ]
+
+function formatCurrency(amount: string): string {
+  const parsed = Number.parseFloat(amount)
+
+  if (Number.isNaN(parsed)) {
+    return amount
+  }
+
+  return parsed.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  })
+}
 
 const inviteOptions = computed(() => {
   return data.value.approvedVendors
@@ -370,6 +385,9 @@ async function copyInviteLink(): Promise<void> {
         </template>
         <template #cell:totalSalesCount="{ row }">
           {{ Number((row as ApprovedVendorRecord).totalSalesCount || 0) }}
+        </template>
+        <template #cell:availableBalance="{ row }">
+          {{ formatCurrency((row as ApprovedVendorRecord).availableBalance || '0.00') }}
         </template>
         <template #cell:linked="{ row }">
           <div class="linked-status-cell">
