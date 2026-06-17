@@ -48,8 +48,16 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Check for ApprovedVendor match
-  const approvedVendor = await ApprovedVendor.findOne({ email: normalizedEmail })
+  // Require approved vendor match before allowing signup
+  const approvedVendor = await ApprovedVendor.findOne({
+    email: normalizedEmail
+  })
+  if (!approvedVendor) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Registration is only available to approved vendors'
+    })
+  }
 
   // Hash password
   const passwordHash = await hashPassword(password)

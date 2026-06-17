@@ -12,11 +12,23 @@ const form = reactive({
   displayName: '',
   email: '',
   phone: '',
-  password: ''
+  password: '',
+  confirmPassword: ''
 })
+
+const passwordMismatch = computed(
+  () =>
+    form.confirmPassword.length > 0 && form.password !== form.confirmPassword
+)
 
 async function submitRegistration(): Promise<void> {
   formError.value = null
+
+  if (passwordMismatch.value) {
+    formError.value = 'Passwords do not match. Please re-enter your password.'
+    return
+  }
+
   isSubmitting.value = true
 
   try {
@@ -30,8 +42,15 @@ async function submitRegistration(): Promise<void> {
 
     await navigateTo('/auth-success?event=registered')
   } catch (error: unknown) {
+    const statusCode = (error as { statusCode?: number })?.statusCode
     const statusMessage = (error as { statusMessage?: string })?.statusMessage
-    formError.value = statusMessage || 'Unable to create account right now.'
+
+    if (statusCode === 403) {
+      formError.value
+        = 'Registration is only available for approved vendors. Please use the email address from your approved vendor record or contact support.'
+    } else {
+      formError.value = statusMessage || 'Unable to create account right now.'
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -99,8 +118,28 @@ async function submitRegistration(): Promise<void> {
             required
             minlength="8"
             autocomplete="new-password"
+            :aria-invalid="passwordMismatch"
           >
         </label>
+
+        <label>
+          <span>Re-enter password</span>
+          <input
+            v-model="form.confirmPassword"
+            type="password"
+            required
+            minlength="8"
+            autocomplete="new-password"
+            :aria-invalid="passwordMismatch"
+          >
+        </label>
+
+        <p
+          v-if="passwordMismatch"
+          class="auth-error"
+        >
+          Passwords do not match.
+        </p>
 
         <p
           v-if="formError"
@@ -112,7 +151,7 @@ async function submitRegistration(): Promise<void> {
         <button
           class="portal-button portal-button--primary"
           type="submit"
-          :disabled="isSubmitting"
+          :disabled="isSubmitting || passwordMismatch"
         >
           {{ isSubmitting ? "Creating account..." : "Create account" }}
         </button>
