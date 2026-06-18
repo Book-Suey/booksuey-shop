@@ -25,6 +25,7 @@ interface PayoutRequestRecord {
 interface VendorRecord {
   vendorId: string
   currentBalance: string
+  approvedVendorId?: string
 }
 
 interface ApprovedVendorRecord {
@@ -32,6 +33,7 @@ interface ApprovedVendorRecord {
   approvedVendorName: string
   isLinked: boolean
   totalSalesCount: number
+  availableBalance: string
 }
 
 interface ImportedSaleRecord {
@@ -183,6 +185,10 @@ const cards = computed(() => {
     (sum, vendor) => sum + Number.parseFloat(vendor.currentBalance || '0'),
     0
   )
+  const totalApprovedVendorBalance = data.value.approvedVendors.reduce(
+    (sum, vendor) => sum + Number.parseFloat(vendor.availableBalance || '0'),
+    0
+  )
   const unlinkedVendorsWithSales = data.value.approvedVendors.filter(
     vendor => !vendor.isLinked && vendor.totalSalesCount > 0
   ).length
@@ -208,6 +214,13 @@ const cards = computed(() => {
       description: 'Across all linked accounts',
       href: '/admin/vendors',
       pageName: 'Vendors'
+    },
+    {
+      label: 'Total Approved Vendor Balance',
+      value: formatCurrency(String(totalApprovedVendorBalance)),
+      description: 'Across all approved vendors',
+      href: '/admin/vendors/approved-vendors',
+      pageName: 'Approved Vendors'
     },
     {
       label: 'Unlinked Vendors',

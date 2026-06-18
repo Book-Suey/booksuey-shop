@@ -156,19 +156,11 @@ async function requestManualImport(rowNumber: number): Promise<void> {
   }
 }
 
-const { data, pending, error, refresh } = useAsyncData(
-  () => `admin-import-batch-${batchId.value}`,
-  async () => {
-    await auth.ensureInitialized()
-
-    return await $fetch<{ batch: BatchDetail }>(
-      `/api/admin/sales/${encodeURIComponent(batchId.value)}`,
-      {
-        method: 'GET'
-      }
-    )
-  },
+const { data, pending, error, refresh } = useFetch<{ batch: BatchDetail }>(
+  `/api/admin/sales/${encodeURIComponent(batchId.value)}`,
   {
+    key: () => `admin-import-batch-${batchId.value}`,
+    method: 'GET',
     default: () => ({
       batch: {
         batchId: '',

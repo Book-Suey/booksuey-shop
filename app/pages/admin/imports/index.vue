@@ -100,43 +100,37 @@ function toBatchDetailPath(batchId: string): string {
   return `/admin/imports/${encodeURIComponent(batchId)}`
 }
 
-const { data, pending, error, refresh } = await useAsyncData(
-  'admin-imports-list',
-  async () => {
-    await auth.ensureInitialized()
-
-    const query: Record<string, string | number> = {
-      limit: 100
-    }
-
-    if (filters.status !== 'all') {
-      query.status = filters.status
-    }
-
-    if (filters.sourcePeriod.trim()) {
-      query.sourcePeriod = filters.sourcePeriod.trim()
-    }
-
-    const dateFrom = toIsoBoundary(filters.dateFrom, 'start')
-    const dateTo = toIsoBoundary(filters.dateTo, 'end')
-
-    if (dateFrom) {
-      query.dateFrom = dateFrom
-    }
-
-    if (dateTo) {
-      query.dateTo = dateTo
-    }
-
-    return await $fetch<{ imports: AdminImportRecord[] }>(
-      '/api/admin/imports',
-      {
-        method: 'GET',
-        query
-      }
-    )
-  },
+const { data, pending, error, refresh } = useFetch<{ imports: AdminImportRecord[] }>(
+  '/api/admin/imports',
   {
+    key: 'admin-imports-list',
+    method: 'GET',
+    query: computed(() => {
+      const query: Record<string, string | number> = {
+        limit: 100
+      }
+
+      if (filters.status !== 'all') {
+        query.status = filters.status
+      }
+
+      if (filters.sourcePeriod.trim()) {
+        query.sourcePeriod = filters.sourcePeriod.trim()
+      }
+
+      const dateFrom = toIsoBoundary(filters.dateFrom, 'start')
+      const dateTo = toIsoBoundary(filters.dateTo, 'end')
+
+      if (dateFrom) {
+        query.dateFrom = dateFrom
+      }
+
+      if (dateTo) {
+        query.dateTo = dateTo
+      }
+
+      return query
+    }),
     watch: [
       () => filters.status,
       () => filters.sourcePeriod,
